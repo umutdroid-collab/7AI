@@ -39,16 +39,21 @@ def list_stock(
     q: str | None = None,
     expiring_within_days: int | None = None,
     include_used: bool = False,
+    status: StockItemStatus | None = None,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
     """Konsinye stok listesi. hospital_id verilmezse depodaki + tüm hastanelerdeki ürünler döner.
     q: ref no / ÜBB no / lot no / seri no üzerinde arama yapar (hangi hastanede ne var, karışıklığı çözer).
+    status: belirli bir durumu filtrelemek için (örn. "used" ile Kullanım sekmesi hangi hastanede
+    kullanıldığını gösterir). Verilirse include_used göz ardı edilir.
     """
     query = db.query(StockItem).join(Product)
     if hospital_id is not None:
         query = query.filter(StockItem.hospital_id == hospital_id)
-    if not include_used:
+    if status is not None:
+        query = query.filter(StockItem.status == status)
+    elif not include_used:
         query = query.filter(StockItem.status != StockItemStatus.USED)
     if q:
         like = f"%{q}%"
@@ -67,7 +72,10 @@ def list_stock(
 
         query = query.filter(StockItem.skt <= cutoff + timedelta(days=expiring_within_days))
 
-    items = query.order_by(StockItem.skt).all()
+    if status == StockItemStatus.USED:
+        items = query.order_by(StockItem.updated_at.desc()).all()
+    else:
+        items = query.order_by(StockItem.skt).all()
     return [_with_expiry(i) for i in items]
 
 

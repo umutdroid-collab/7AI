@@ -45,6 +45,7 @@ export async function fetchStock(params: {
   hospital_id?: number;
   q?: string;
   expiring_within_days?: number;
+  status?: StockItem["status"];
 }) {
   const { data } = await api.get<StockItem[]>("/stock", { params });
   return data;

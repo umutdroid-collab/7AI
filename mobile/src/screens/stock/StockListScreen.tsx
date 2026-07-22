@@ -17,10 +17,13 @@ import { colors, spacing } from "../../theme";
 import StockItemCard from "../../components/StockItemCard";
 import { apiErrorMessage } from "../../api/client";
 
+type ViewMode = "active" | "used";
+
 export default function StockListScreen({ navigation }: any) {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState<number | "all" | "warehouse">("all");
   const [query, setQuery] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("active");
   const [items, setItems] = useState<StockItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +36,9 @@ export default function StockListScreen({ navigation }: any) {
     setError(null);
     try {
       const params: any = { q: query || undefined };
+      if (viewMode === "used") {
+        params.status = "used";
+      }
       if (selectedHospitalId === "warehouse") {
         // Depodaki ürünler: hospital_id backend'de sorgulanamıyor (null filtre), istemci tarafında filtrele
       } else if (selectedHospitalId !== "all") {
@@ -46,7 +52,7 @@ export default function StockListScreen({ navigation }: any) {
     } finally {
       setIsLoading(false);
     }
-  }, [query, selectedHospitalId]);
+  }, [query, selectedHospitalId, viewMode]);
 
   useFocusEffect(
     useCallback(() => {
@@ -56,6 +62,21 @@ export default function StockListScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      <View style={styles.segmentRow}>
+        <TouchableOpacity
+          style={[styles.segment, viewMode === "active" && styles.segmentActive]}
+          onPress={() => setViewMode("active")}
+        >
+          <Text style={[styles.segmentText, viewMode === "active" && styles.segmentTextActive]}>Aktif Stok</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.segment, viewMode === "used" && styles.segmentActive]}
+          onPress={() => setViewMode("used")}
+        >
+          <Text style={[styles.segmentText, viewMode === "used" && styles.segmentTextActive]}>Kullanım</Text>
+        </TouchableOpacity>
+      </View>
+
       <TextInput
         style={styles.search}
         placeholder="Ref no, ÜBB no, lot no veya seri no ile ara"
@@ -97,16 +118,22 @@ export default function StockListScreen({ navigation }: any) {
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={{ padding: spacing(2) }}
           refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} />}
-          ListEmptyComponent={<Text style={styles.empty}>Kayıt bulunamadı</Text>}
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              {viewMode === "used" ? "Henüz kullanılan ürün yok" : "Kayıt bulunamadı"}
+            </Text>
+          }
           renderItem={({ item }) => (
             <StockItemCard item={item} onPress={() => navigation.navigate("StockDetail", { stockItemId: item.id })} />
           )}
         />
       )}
 
-      <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("AddStock")}>
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
+      {viewMode === "active" && (
+        <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("AddStock")}>
+          <Text style={styles.fabText}>+</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -121,6 +148,25 @@ function FilterChip({ label, active, onPress }: { label: string; active: boolean
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  segmentRow: {
+    flexDirection: "row",
+    marginHorizontal: spacing(2),
+    marginTop: spacing(2),
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 4,
+  },
+  segment: {
+    flex: 1,
+    paddingVertical: spacing(1.25),
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  segmentActive: { backgroundColor: colors.primary },
+  segmentText: { color: colors.textMuted, fontSize: 13, fontWeight: "700" },
+  segmentTextActive: { color: "#0f172a" },
   search: {
     margin: spacing(2),
     marginBottom: spacing(1),

@@ -47,6 +47,11 @@ def delete_product(product_id: int, db: Session = Depends(get_db), _: User = Dep
     product = db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
+    if product.stock_items:
+        raise HTTPException(
+            status_code=400,
+            detail="Bu ürüne bağlı stok kayıtları var, önce onları silin",
+        )
     db.delete(product)
     db.commit()
     return {"ok": True}

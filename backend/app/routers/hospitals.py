@@ -40,6 +40,11 @@ def delete_hospital(hospital_id: int, db: Session = Depends(get_db), _: User = D
     hospital = db.get(Hospital, hospital_id)
     if not hospital:
         raise HTTPException(status_code=404, detail="Hastane bulunamadı")
+    if hospital.stock_items:
+        raise HTTPException(
+            status_code=400,
+            detail="Bu hastanede kayıtlı stok ürünleri var, önce onları taşıyın veya iade edin",
+        )
     db.delete(hospital)
     db.commit()
     return {"ok": True}

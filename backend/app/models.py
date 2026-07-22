@@ -106,7 +106,9 @@ class StockItem(Base):
 
     product: Mapped["Product"] = relationship(back_populates="stock_items")
     hospital: Mapped["Hospital | None"] = relationship(back_populates="stock_items")
-    movements: Mapped[list["StockMovement"]] = relationship(back_populates="stock_item", order_by="StockMovement.moved_at")
+    movements: Mapped[list["StockMovement"]] = relationship(
+        back_populates="stock_item", order_by="StockMovement.moved_at", cascade="all, delete-orphan"
+    )
 
 
 class StockMovement(Base):

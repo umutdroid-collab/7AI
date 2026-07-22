@@ -19,15 +19,23 @@ function expiryLabel(days: number | null): string {
 }
 
 export default function StockItemCard({ item, onPress }: { item: StockItem; onPress: () => void }) {
+  const isUsed = item.status === "used";
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
       <View style={styles.headerRow}>
         <Text style={styles.name} numberOfLines={1}>
           {item.product.name}
         </Text>
-        <View style={[styles.badge, { backgroundColor: expiryColor(item.days_to_expiry) }]}>
-          <Text style={styles.badgeText}>{expiryLabel(item.days_to_expiry)}</Text>
-        </View>
+        {isUsed ? (
+          <View style={[styles.badge, { backgroundColor: colors.textMuted }]}>
+            <Text style={styles.badgeText}>Kullanıldı</Text>
+          </View>
+        ) : (
+          <View style={[styles.badge, { backgroundColor: expiryColor(item.days_to_expiry) }]}>
+            <Text style={styles.badgeText}>{expiryLabel(item.days_to_expiry)}</Text>
+          </View>
+        )}
       </View>
 
       <Text style={styles.meta}>
@@ -38,9 +46,19 @@ export default function StockItemCard({ item, onPress }: { item: StockItem; onPr
         Lot: {item.lot_no}
         {item.serial_no ? `  •  Seri: ${item.serial_no}` : ""}
       </Text>
-      <Text style={styles.location}>
-        📍 {item.hospital ? item.hospital.name : "Depo"}
-      </Text>
+
+      {isUsed ? (
+        <>
+          <Text style={styles.location}>
+            🏥 Kullanıldığı hastane: {item.hospital ? item.hospital.name : "Depo"}
+          </Text>
+          <Text style={styles.meta}>
+            Kullanım tarihi: {new Date(item.updated_at).toLocaleDateString("tr-TR")}
+          </Text>
+        </>
+      ) : (
+        <Text style={styles.location}>📍 {item.hospital ? item.hospital.name : "Depo"}</Text>
+      )}
     </TouchableOpacity>
   );
 }

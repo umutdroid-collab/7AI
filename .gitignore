@@ -1,0 +1,30 @@
+# --- Python / backend ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# backend runtime data (databases, uploaded invoices, indexed vectors)
+backend/data/app.db
+backend/data/invoices/*
+!backend/data/invoices/.gitkeep
+backend/data/clinical_docs/*
+!backend/data/clinical_docs/.gitkeep
+backend/data/vectorstore/*
+!backend/data/vectorstore/.gitkeep
+backend/.env
+
+# --- Node / mobile ---
+node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+*.log
+npm-debug.*
+
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/

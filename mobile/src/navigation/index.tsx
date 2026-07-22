@@ -1,0 +1,113 @@
+import React from "react";
+import { ActivityIndicator, View } from "react-native";
+import { NavigationContainer, DarkTheme } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useAuth } from "../context/AuthContext";
+import { colors } from "../theme";
+import HeaderLogoutButton from "../components/HeaderLogoutButton";
+
+import LoginScreen from "../screens/auth/LoginScreen";
+import StockListScreen from "../screens/stock/StockListScreen";
+import StockDetailScreen from "../screens/stock/StockDetailScreen";
+import TransferStockScreen from "../screens/stock/TransferStockScreen";
+import AddStockScreen from "../screens/stock/AddStockScreen";
+import InvoiceListScreen from "../screens/invoices/InvoiceListScreen";
+import InvoiceDetailScreen from "../screens/invoices/InvoiceDetailScreen";
+import NotificationsScreen from "../screens/invoices/NotificationsScreen";
+import AssistantChatScreen from "../screens/assistant/AssistantChatScreen";
+
+const StockStackNav = createNativeStackNavigator();
+const InvoiceStackNav = createNativeStackNavigator();
+const AssistantStackNav = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+const screenOptions = {
+  headerStyle: { backgroundColor: colors.surface },
+  headerTintColor: colors.text,
+  contentStyle: { backgroundColor: colors.background },
+};
+
+function StockStack() {
+  return (
+    <StockStackNav.Navigator screenOptions={screenOptions}>
+      <StockStackNav.Screen
+        name="StockList"
+        component={StockListScreen}
+        options={{ title: "Stok Takip", headerRight: () => <HeaderLogoutButton /> }}
+      />
+      <StockStackNav.Screen name="StockDetail" component={StockDetailScreen} options={{ title: "Ürün Detayı" }} />
+      <StockStackNav.Screen name="TransferStock" component={TransferStockScreen} options={{ title: "Taşı" }} />
+      <StockStackNav.Screen name="AddStock" component={AddStockScreen} options={{ title: "Yeni Stok Kaydı" }} />
+    </StockStackNav.Navigator>
+  );
+}
+
+function InvoiceStack() {
+  return (
+    <InvoiceStackNav.Navigator screenOptions={screenOptions}>
+      <InvoiceStackNav.Screen
+        name="InvoiceList"
+        component={InvoiceListScreen}
+        options={{ title: "Fatura Takip", headerRight: () => <HeaderLogoutButton /> }}
+      />
+      <InvoiceStackNav.Screen name="InvoiceDetail" component={InvoiceDetailScreen} options={{ title: "Fatura Detayı" }} />
+      <InvoiceStackNav.Screen name="Notifications" component={NotificationsScreen} options={{ title: "Bildirimler" }} />
+    </InvoiceStackNav.Navigator>
+  );
+}
+
+function AssistantStack() {
+  return (
+    <AssistantStackNav.Navigator screenOptions={screenOptions}>
+      <AssistantStackNav.Screen
+        name="AssistantChat"
+        component={AssistantChatScreen}
+        options={{ title: "Klinik Asistan", headerRight: () => <HeaderLogoutButton /> }}
+      />
+    </AssistantStackNav.Navigator>
+  );
+}
+
+function MainTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+      }}
+    >
+      <Tab.Screen name="Stok" component={StockStack} options={{ tabBarLabel: "Stok Takip" }} />
+      <Tab.Screen name="Fatura" component={InvoiceStack} options={{ tabBarLabel: "Fatura Takip" }} />
+      <Tab.Screen name="Asistan" component={AssistantStack} options={{ tabBarLabel: "Klinik Asistan" }} />
+    </Tab.Navigator>
+  );
+}
+
+const navTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: colors.background,
+    card: colors.surface,
+    border: colors.border,
+    primary: colors.primary,
+    text: colors.text,
+  },
+};
+
+export default function RootNavigator() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={colors.primary} size="large" />
+      </View>
+    );
+  }
+
+  return <NavigationContainer theme={navTheme}>{user ? <MainTabs /> : <LoginScreen />}</NavigationContainer>;
+}

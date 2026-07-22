@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "7AI Saha Uygulamasi",
+    "slug": "7ai-saha-uygulamasi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#0f172a"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sirket.sahauygulamasi"
+    },
+    "android": {
+      "package": "com.sirket.sahauygulamasi",
+      "adaptiveIcon": {
+        "backgroundColor": "#0f172a"
+      }
+    },
+    "extra": {
+      "apiBaseUrl": "http://localhost:8000"
+    }
+  }
+}

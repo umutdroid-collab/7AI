@@ -1,0 +1,36 @@
+from functools import lru_cache
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    database_url: str = "sqlite:///./data/app.db"
+    secret_key: str = "insecure-dev-secret-change-me"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 480
+    cors_origins: str = "*"
+
+    skt_warning_days: int = 90
+
+    invoice_folder: str = "./data/invoices"
+    invoice_reminder_days: int = 7
+
+    clinical_docs_folder: str = "./data/clinical_docs"
+    vector_db_dir: str = "./data/vectorstore"
+
+    qwen_base_url: str = "http://localhost:11434/v1"
+    qwen_api_key: str = "ollama"
+    qwen_model: str = "qwen2.5:14b-instruct"
+
+    pubmed_email: str = ""
+    pubmed_api_key: str = ""
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

@@ -9,6 +9,10 @@ literatür asistanı içeren mobil uygulama. İki parçadan oluşur:
   Android'de çalışan mobil istemci. 3 sekme: **Stok Takip**, **Fatura
   Takip**, **Klinik Asistan**.
 
+> Çalışanlarınızın telefonlarından erişebileceği şekilde backend'i canlıya
+> almak için **`DEPLOYMENT.md`** dosyasındaki adım adım Railway rehberine
+> bakın.
+
 ## Neden bu mimari?
 
 - Tek bir merkezi backend + tüm çalışanların kullandığı mobil uygulama,
@@ -36,12 +40,22 @@ izlenebilir olur. Çalışanlar ref/ÜBB/lot/seri numarasıyla arama yapıp bir
 
 ## 2) Fatura Takip
 
-`backend/data/invoices/` klasörüne bir fatura PDF'i attığınızda arka
-planda çalışan klasör izleyici (`watchdog`) dosyayı yakalar, metnini
-çıkarır (`pdfplumber`) ve **fatura no / fatura tarihi / vade tarihi /
-tutar / firma** bilgilerini regex tabanlı bir ayrıştırıcıyla otomatik
-doldurur. Alanlardan biri okunamazsa fatura "kontrol edilmeli" (
-`needs_review`) durumuna düşer ve elle düzeltilebilir
+İki şekilde fatura ekleyebilirsiniz:
+
+- **Klasöre atarak** — backend'i kendi sunucunuzda/bilgisayarınızda
+  çalıştırıyorsanız `backend/data/invoices/` klasörüne bir fatura PDF'i
+  attığınızda arka planda çalışan klasör izleyici (`watchdog`) dosyayı
+  yakalar.
+- **Uygulamadan yükleyerek** — backend bulutta barındırılıyorsa (bkz.
+  `DEPLOYMENT.md`) sunucunun dosya sistemine erişiminiz olmaz; bu durumda
+  mobil uygulamada Fatura Takip sekmesindeki 📤 butonuyla (yalnızca
+  yönetici hesabında görünür) PDF'i doğrudan yükleyebilirsiniz
+  (`POST /invoices/upload`).
+
+Her iki yolda da PDF metni çıkarılır (`pdfplumber`) ve **fatura no /
+fatura tarihi / vade tarihi / tutar / firma** bilgileri regex tabanlı bir
+ayrıştırıcıyla otomatik doldurulur. Alanlardan biri okunamazsa fatura
+"kontrol edilmeli" (`needs_review`) durumuna düşer ve elle düzeltilebilir
 (`PATCH /invoices/{id}`). Çalışanlar uygulamadan faturanın PDF'ini
 indirebilir/paylaşabilir. Vade tarihi yaklaşan/geçen faturalar için
 6 saatte bir çalışan zamanlayıcı otomatik bildirim üretir
@@ -55,11 +69,15 @@ indirebilir/paylaşabilir. Vade tarihi yaklaşan/geçen faturalar için
 
 ## 3) Klinik Asistan (Qwen + RAG + PubMed)
 
-`backend/data/clinical_docs/` klasörüne attığınız klinik çalışma
-PDF'leri, uygulama açılışında ve `POST /assistant/reindex` çağrısında
-otomatik olarak parçalanıp yerel bir vektör veritabanına (Chroma, tamamen
-yerel embedding — harici API anahtarı gerektirmez) indekslenir. Bir
-çalışan soru sorduğunda:
+Klinik çalışma PDF'lerini de fatura PDF'leri gibi iki şekilde
+ekleyebilirsiniz: backend'in çalıştığı makinedeyseniz
+`backend/data/clinical_docs/` klasörüne atarak, bulutta barındırıyorsanız
+mobil uygulamada Klinik Asistan sekmesindeki 📤 "Çalışma Yükle" butonuyla
+(yalnızca yönetici hesabında görünür, `POST /assistant/documents/upload`).
+Her iki durumda da PDF, uygulama açılışında veya `POST /assistant/reindex`
+çağrısında otomatik olarak parçalanıp yerel bir vektör veritabanına
+(Chroma, tamamen yerel embedding — harici API anahtarı gerektirmez)
+indekslenir. Bir çalışan soru sorduğunda:
 
 1. Sorusuyla en alakalı doküman parçaları vektör aramasıyla bulunur.
 2. Aynı anda PubMed'de (NCBI E-utilities, ücretsiz) ilgili güncel yayınlar

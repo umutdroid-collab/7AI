@@ -1,17 +1,20 @@
 import os
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.database import get_db
 from app.deps import get_current_user, require_admin
 from app.models import Invoice, User
 from app.schemas import InvoiceOut, InvoiceUpdate
-from app.services.invoice_watcher import scan_existing_invoices
+from app.services.invoice_watcher import ingest_pdf, scan_existing_invoices
+from app.utils import safe_pdf_filename, unique_destination
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
+settings = get_settings()
 
 
 def _with_days(invoice: Invoice) -> InvoiceOut:
@@ -50,6 +53,43 @@ def list_invoices(
 def rescan_invoice_folder(_: User = Depends(require_admin)):
     scan_existing_invoices()
     return {"ok": True}
+
+
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+
+
+@router.post("/upload", response_model=InvoiceOut)
+async def upload_invoice(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Fatura klasörüne fiziksel erişimi olmayan (örn. bulutta barındırılan)
+    kurulumlarda, faturayı doğrudan uygulamadan yükleyip otomatik okumayı
+    tetiklemek için kullanılır."""
+    if not (file.filename or "").lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Sadece PDF dosyası yükleyebilirsiniz")
+
+    folder = settings.invoice_folder
+    os.makedirs(folder, exist_ok=True)
+    dest_path = unique_destination(folder, safe_pdf_filename(file.filename))
+
+    size = 0
+    with open(dest_path, "wb") as out:
+        while chunk := await file.read(1024 * 1024):
+            size += len(chunk)
+            if size > MAX_UPLOAD_BYTES:
+                out.close()
+                os.remove(dest_path)
+                raise HTTPException(status_code=400, detail="Dosya çok büyük (maksimum 20 MB)")
+            out.write(chunk)
+
+    ingest_pdf(dest_path)
+
+    invoice = db.query(Invoice).filter(Invoice.source_filename == os.path.basename(dest_path)).first()
+    if not invoice:
+        raise HTTPException(status_code=500, detail="Fatura işlenemedi")
+    return _with_days(invoice)
 
 
 @router.get("/{invoice_id}", response_model=InvoiceOut)

@@ -100,3 +100,11 @@ export interface ChatMessage {
   text: string;
   sources?: ChatSource[];
 }
+
+export interface ClinicalDocument {
+  id: number;
+  filename: string;
+  title: string | null;
+  num_chunks: number;
+  indexed_at: string;
+}

@@ -1,20 +1,24 @@
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { fetchInvoices, fetchNotifications } from "../../api/services";
+import * as DocumentPicker from "expo-document-picker";
+import { fetchInvoices, fetchNotifications, uploadInvoicePdf } from "../../api/services";
 import { Invoice } from "../../types";
 import { colors, spacing } from "../../theme";
 import InvoiceCard from "../../components/InvoiceCard";
 import { apiErrorMessage } from "../../api/client";
+import { useAuth } from "../../context/AuthContext";
 
 type Filter = "all" | "upcoming" | "overdue";
 
 export default function InvoiceListScreen({ navigation }: any) {
+  const { user } = useAuth();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -39,6 +43,28 @@ export default function InvoiceListScreen({ navigation }: any) {
     }, [load])
   );
 
+  async function handleUpload() {
+    const result = await DocumentPicker.getDocumentAsync({ type: "application/pdf", copyToCacheDirectory: true });
+    if (result.canceled || !result.assets?.length) return;
+
+    const file = result.assets[0];
+    setIsUploading(true);
+    try {
+      const invoice = await uploadInvoicePdf(file.uri, file.name || "fatura.pdf");
+      Alert.alert(
+        "Fatura yüklendi",
+        invoice.parse_confidence >= 0.75
+          ? "Fatura bilgileri otomatik olarak okundu."
+          : "Fatura yüklendi ancak bazı alanlar otomatik okunamadı, kontrol edip düzeltmeniz gerekebilir.",
+        [{ text: "Tamam", onPress: load }]
+      );
+    } catch (e) {
+      Alert.alert("Hata", apiErrorMessage(e));
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
@@ -50,6 +76,15 @@ export default function InvoiceListScreen({ navigation }: any) {
           onChangeText={setQuery}
           onSubmitEditing={load}
         />
+        {user?.role === "admin" && (
+          <TouchableOpacity style={styles.uploadButton} onPress={handleUpload} disabled={isUploading}>
+            {isUploading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={styles.uploadText}>📤</Text>
+            )}
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.bellButton} onPress={() => navigation.navigate("Notifications")}>
           <Text style={styles.bellText}>🔔</Text>
           {unreadCount > 0 && (
@@ -107,6 +142,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  uploadButton: { marginLeft: spacing(1.5), padding: spacing(1) },
+  uploadText: { fontSize: 20 },
   bellButton: { marginLeft: spacing(1.5), padding: spacing(1) },
   bellText: { fontSize: 22 },
   bellBadge: {

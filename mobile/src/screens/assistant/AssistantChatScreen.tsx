@@ -1,6 +1,7 @@
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Linking,
@@ -11,10 +12,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { askAssistant } from "../../api/services";
+import { useFocusEffect } from "@react-navigation/native";
+import * as DocumentPicker from "expo-document-picker";
+import { askAssistant, fetchClinicalDocuments, uploadClinicalDocument } from "../../api/services";
 import { ChatMessage } from "../../types";
 import { colors, spacing } from "../../theme";
 import { apiErrorMessage } from "../../api/client";
+import { useAuth } from "../../context/AuthContext";
 
 const WELCOME: ChatMessage = {
   id: "welcome",
@@ -26,10 +30,42 @@ const WELCOME: ChatMessage = {
 };
 
 export default function AssistantChatScreen() {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [documentCount, setDocumentCount] = useState<number | null>(null);
   const listRef = useRef<FlatList>(null);
+
+  const loadDocumentCount = useCallback(() => {
+    fetchClinicalDocuments()
+      .then((docs) => setDocumentCount(docs.length))
+      .catch(() => {});
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadDocumentCount();
+    }, [loadDocumentCount])
+  );
+
+  async function handleUploadDocument() {
+    const result = await DocumentPicker.getDocumentAsync({ type: "application/pdf", copyToCacheDirectory: true });
+    if (result.canceled || !result.assets?.length) return;
+
+    const file = result.assets[0];
+    setIsUploading(true);
+    try {
+      await uploadClinicalDocument(file.uri, file.name || "calisma.pdf");
+      Alert.alert("Yüklendi", "Klinik çalışma başarıyla indekslendi ve sorularda kullanılabilir.");
+      loadDocumentCount();
+    } catch (e) {
+      Alert.alert("Hata", apiErrorMessage(e));
+    } finally {
+      setIsUploading(false);
+    }
+  }
 
   async function handleSend() {
     const question = input.trim();
@@ -66,6 +102,21 @@ export default function AssistantChatScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={90}
     >
+      {user?.role === "admin" && (
+        <View style={styles.adminBar}>
+          <Text style={styles.adminBarText}>
+            {documentCount === null ? "Klinik çalışmalar yükleniyor..." : `${documentCount} klinik çalışma indekslendi`}
+          </Text>
+          <TouchableOpacity style={styles.adminUploadButton} onPress={handleUploadDocument} disabled={isUploading}>
+            {isUploading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={styles.adminUploadText}>📤 Çalışma Yükle</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+
       <FlatList
         ref={listRef}
         data={messages}
@@ -133,6 +184,26 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  adminBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing(2),
+    paddingVertical: spacing(1),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  adminBarText: { color: colors.textMuted, fontSize: 12, flex: 1 },
+  adminUploadButton: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 8,
+    paddingHorizontal: spacing(1.5),
+    paddingVertical: spacing(0.75),
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  adminUploadText: { color: colors.primary, fontSize: 12, fontWeight: "700" },
   bubbleRow: { marginBottom: spacing(1.5), alignItems: "flex-start" },
   bubbleRowUser: { alignItems: "flex-end" },
   bubble: { maxWidth: "85%", borderRadius: 14, padding: spacing(1.5) },

@@ -1,6 +1,7 @@
 import { api } from "./client";
 import {
   ChatResponse,
+  ClinicalDocument,
   Hospital,
   Invoice,
   Notification,
@@ -9,6 +10,13 @@ import {
   StockMovement,
   User,
 } from "../types";
+
+function pdfFormData(fileUri: string, fileName: string): FormData {
+  const form = new FormData();
+  // React Native'in fetch/FormData polyfill'i bu { uri, name, type } şeklini bekler.
+  form.append("file", { uri: fileUri, name: fileName, type: "application/pdf" } as any);
+  return form;
+}
 
 // --- Auth ---
 
@@ -90,6 +98,13 @@ export async function fetchInvoices(params?: { upcoming_only?: boolean; overdue_
   return data;
 }
 
+export async function uploadInvoicePdf(fileUri: string, fileName: string) {
+  const { data } = await api.post<Invoice>("/invoices/upload", pdfFormData(fileUri, fileName), {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
 export async function fetchInvoice(invoiceId: number) {
   const { data } = await api.get<Invoice>(`/invoices/${invoiceId}`);
   return data;
@@ -121,5 +136,17 @@ export async function markAllNotificationsRead() {
 
 export async function askAssistant(question: string) {
   const { data } = await api.post<ChatResponse>("/assistant/chat", { question });
+  return data;
+}
+
+export async function fetchClinicalDocuments() {
+  const { data } = await api.get<ClinicalDocument[]>("/assistant/documents");
+  return data;
+}
+
+export async function uploadClinicalDocument(fileUri: string, fileName: string) {
+  const { data } = await api.post<ClinicalDocument>("/assistant/documents/upload", pdfFormData(fileUri, fileName), {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return data;
 }

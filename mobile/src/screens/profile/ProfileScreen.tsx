@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   ScrollView,
   StyleSheet,
@@ -10,7 +9,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import Alert from "../../utils/alert";
 import { useAuth } from "../../context/AuthContext";
 import { changePassword, createUser, fetchUsers, setUserActive } from "../../api/services";
 import { apiErrorMessage } from "../../api/client";
@@ -21,6 +21,7 @@ const ROLE_LABELS: Record<string, string> = { admin: "Yönetici", employee: "Ça
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const navigation = useNavigation<any>();
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -176,6 +177,15 @@ export default function ProfileScreen() {
 
       {user?.role === "admin" && (
         <>
+          <Text style={styles.sectionTitle}>Toplu Veri Ekleme</Text>
+          <TouchableOpacity style={styles.bulkUploadCard} onPress={() => navigation.navigate("BulkUpload")}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bulkUploadTitle}>Hastane, ürün, stok ve fatura yükle</Text>
+              <Text style={styles.bulkUploadSubtitle}>CSV veya PDF dosyalarıyla tek seferde toplu ekleme yapın</Text>
+            </View>
+            <Text style={styles.bulkUploadChevron}>›</Text>
+          </TouchableOpacity>
+
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Kullanıcılar</Text>
             <TouchableOpacity onPress={() => setShowAddUser((v) => !v)}>
@@ -300,6 +310,19 @@ const styles = StyleSheet.create({
     marginBottom: spacing(1),
   },
   addUserToggle: { color: colors.primary, fontSize: 13, fontWeight: "700" },
+  bulkUploadCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: spacing(2),
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing(2),
+  },
+  bulkUploadTitle: { color: colors.text, fontSize: 14, fontWeight: "700" },
+  bulkUploadSubtitle: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  bulkUploadChevron: { color: colors.textMuted, fontSize: 22, marginLeft: spacing(1) },
   input: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: 10,

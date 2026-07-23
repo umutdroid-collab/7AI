@@ -20,6 +20,7 @@ import NotificationsScreen from "../screens/invoices/NotificationsScreen";
 import AssistantChatScreen from "../screens/assistant/AssistantChatScreen";
 import CheckInScreen from "../screens/checkins/CheckInScreen";
 import ProfileScreen from "../screens/profile/ProfileScreen";
+import BulkUploadScreen from "../screens/profile/BulkUploadScreen";
 
 const StockStackNav = createNativeStackNavigator();
 const InvoiceStackNav = createNativeStackNavigator();
@@ -47,6 +48,7 @@ function StockStack() {
       <StockStackNav.Screen name="AddHospital" component={AddHospitalScreen} options={{ title: "Yeni Hastane" }} />
       <StockStackNav.Screen name="AddProduct" component={AddProductScreen} options={{ title: "Yeni Ürün" }} />
       <StockStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
+      <StockStackNav.Screen name="BulkUpload" component={BulkUploadScreen} options={{ title: "Toplu Ekleme" }} />
     </StockStackNav.Navigator>
   );
 }
@@ -62,6 +64,7 @@ function InvoiceStack() {
       <InvoiceStackNav.Screen name="InvoiceDetail" component={InvoiceDetailScreen} options={{ title: "Fatura Detayı" }} />
       <InvoiceStackNav.Screen name="Notifications" component={NotificationsScreen} options={{ title: "Bildirimler" }} />
       <InvoiceStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
+      <InvoiceStackNav.Screen name="BulkUpload" component={BulkUploadScreen} options={{ title: "Toplu Ekleme" }} />
     </InvoiceStackNav.Navigator>
   );
 }
@@ -75,6 +78,7 @@ function AssistantStack() {
         options={({ navigation }) => ({ title: "Klinik Asistan", headerRight: () => <HeaderProfileButton navigation={navigation} /> })}
       />
       <AssistantStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
+      <AssistantStackNav.Screen name="BulkUpload" component={BulkUploadScreen} options={{ title: "Toplu Ekleme" }} />
     </AssistantStackNav.Navigator>
   );
 }
@@ -88,6 +92,7 @@ function CheckInStack() {
         options={({ navigation }) => ({ title: "Çalışan Takip", headerRight: () => <HeaderProfileButton navigation={navigation} /> })}
       />
       <CheckInStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
+      <CheckInStackNav.Screen name="BulkUpload" component={BulkUploadScreen} options={{ title: "Toplu Ekleme" }} />
     </CheckInStackNav.Navigator>
   );
 }

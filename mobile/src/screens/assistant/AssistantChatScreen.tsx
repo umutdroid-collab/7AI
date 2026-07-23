@@ -1,7 +1,6 @@
 import React, { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Linking,
@@ -13,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import Alert from "../../utils/alert";
 import * as DocumentPicker from "expo-document-picker";
 import { askAssistant, fetchClinicalDocuments, uploadClinicalDocument } from "../../api/services";
 import { ChatMessage } from "../../types";
@@ -57,7 +57,7 @@ export default function AssistantChatScreen() {
     const file = result.assets[0];
     setIsUploading(true);
     try {
-      await uploadClinicalDocument(file.uri, file.name || "calisma.pdf");
+      await uploadClinicalDocument(file.uri, file.name || "calisma.pdf", file.file);
       Alert.alert("Yüklendi", "Klinik çalışma başarıyla indekslendi ve sorularda kullanılabilir.");
       loadDocumentCount();
     } catch (e) {

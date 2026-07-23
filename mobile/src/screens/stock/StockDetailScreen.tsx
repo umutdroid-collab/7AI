@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Alert from "../../utils/alert";
 import { useFocusEffect } from "@react-navigation/native";
 import { fetchStock, fetchStockHistory, markStockItemUsed } from "../../api/services";
 import { StockItem, StockMovement } from "../../types";

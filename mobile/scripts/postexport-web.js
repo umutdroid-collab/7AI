@@ -29,6 +29,15 @@ for (const file of ["icon-192.png", "icon-512.png", "apple-touch-icon.png"]) {
 const indexPath = path.join(OUT_DIR, "index.html");
 let html = fs.readFileSync(indexPath, "utf8");
 
+// viewport-fit=cover olmadan iOS, standalone (Ana Ekrana Ekle) modunda
+// safe-area-inset-* CSS değerlerini hiç raporlamaz; bu da React Navigation'ın
+// alt sekme çubuğunu güvenli alanı hesaba katmadan (dolayısıyla küçük/yanlış
+// boyutlu) çizmesine yol açar.
+html = html.replace(
+  '<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />',
+  '<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />'
+);
+
 const extraHead = `
 <link rel="manifest" href="/manifest.json" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

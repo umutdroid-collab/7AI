@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import Alert from "../../utils/alert";
 import { useFocusEffect } from "@react-navigation/native";
 import * as DocumentPicker from "expo-document-picker";
 import { fetchInvoices, fetchNotifications, uploadInvoicePdf } from "../../api/services";
@@ -50,7 +51,7 @@ export default function InvoiceListScreen({ navigation }: any) {
     const file = result.assets[0];
     setIsUploading(true);
     try {
-      const invoice = await uploadInvoicePdf(file.uri, file.name || "fatura.pdf");
+      const invoice = await uploadInvoicePdf(file.uri, file.name || "fatura.pdf", file.file);
       Alert.alert(
         "Fatura yüklendi",
         invoice.parse_confidence >= 0.75

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, require_admin
 from app.models import CheckIn, Hospital, User, UserRole
 from app.schemas import CheckInOut, CheckInUpdate
 from app.utils import safe_image_filename, unique_destination
@@ -118,3 +118,13 @@ def update_checkin(
     db.commit()
     db.refresh(checkin)
     return checkin
+
+
+@router.delete("/{checkin_id}")
+def delete_checkin(checkin_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    checkin = _get_checkin_or_404(checkin_id, db)
+    if os.path.exists(checkin.photo_path):
+        os.remove(checkin.photo_path)
+    db.delete(checkin)
+    db.commit()
+    return {"ok": True}

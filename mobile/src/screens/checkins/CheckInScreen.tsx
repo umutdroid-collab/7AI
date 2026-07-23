@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +10,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
+import Alert from "../../utils/alert";
 import secureStorage from "../../utils/secureStorage";
 import { createCheckIn, fetchCheckIns, fetchHospitals } from "../../api/services";
 import { CheckIn, Hospital } from "../../types";
@@ -82,7 +82,7 @@ export default function CheckInScreen() {
 
     setIsSubmitting(true);
     try {
-      await createCheckIn(selectedHospitalId, result.assets[0].uri, comment || undefined);
+      await createCheckIn(selectedHospitalId, result.assets[0].uri, comment || undefined, result.assets[0].file);
       setComment("");
       Alert.alert("Giriş kaydedildi", "İyi çalışmalar!", [{ text: "Tamam", onPress: load }]);
     } catch (e) {
@@ -157,7 +157,7 @@ export default function CheckInScreen() {
           <Text style={styles.empty}>Henüz giriş kaydı yok</Text>
         ) : (
           checkins.map((c) => (
-            <CheckInCard key={c.id} checkin={c} token={token} showEmployee={viewMode === "team"} />
+            <CheckInCard key={c.id} checkin={c} token={token} showEmployee={viewMode === "team"} onDeleted={load} />
           ))
         )}
       </ScrollView>

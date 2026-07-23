@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import Alert from "../../utils/alert";
 import { fetchHospitals, transferStockItem } from "../../api/services";
 import { Hospital } from "../../types";
 import { colors, spacing } from "../../theme";
@@ -111,9 +112,13 @@ export default function TransferStockScreen({ route, navigation }: any) {
         onPress={handleConfirm}
         disabled={isSubmitting}
       >
-        <Text style={styles.confirmButtonText}>
-          {destination === undefined ? "Taşımayı Onayla" : `Onayla: ${destinationLabel}`}
-        </Text>
+        {isSubmitting ? (
+          <ActivityIndicator color="#0f172a" />
+        ) : (
+          <Text style={styles.confirmButtonText}>
+            {destination === undefined ? "Taşımayı Onayla" : `Onayla: ${destinationLabel}`}
+          </Text>
+        )}
       </TouchableOpacity>
     </View>
   );

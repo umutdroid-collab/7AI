@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity } from "react-native";
+import Alert from "../../utils/alert";
 import { createHospital } from "../../api/services";
 import { apiErrorMessage } from "../../api/client";
 import { colors, spacing } from "../../theme";

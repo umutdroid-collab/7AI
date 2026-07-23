@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { api } from "./client";
 import {
   ChatResponse,
@@ -12,10 +13,21 @@ import {
   User,
 } from "../types";
 
-function pdfFormData(fileUri: string, fileName: string): FormData {
+// Web'de tarayıcının yerleşik FormData'sı { uri, name, type } şeklini anlamaz,
+// gerçek bir Blob/File bekler; bu yüzden web'de seçici sonucundaki `file`
+// alanı (expo-document-picker / expo-image-picker web implementasyonunda
+// mevcuttur) doğrudan eklenir. Native'de ise React Native'in fetch polyfill'i
+// { uri, name, type } şeklini bekler.
+function filePart(fileUri: string, fileName: string, mimeType: string, webFile?: File | Blob | null) {
+  if (Platform.OS === "web" && webFile) {
+    return webFile;
+  }
+  return { uri: fileUri, name: fileName, type: mimeType } as any;
+}
+
+function pdfFormData(fileUri: string, fileName: string, webFile?: File | Blob | null): FormData {
   const form = new FormData();
-  // React Native'in fetch/FormData polyfill'i bu { uri, name, type } şeklini bekler.
-  form.append("file", { uri: fileUri, name: fileName, type: "application/pdf" } as any);
+  form.append("file", filePart(fileUri, fileName, "application/pdf", webFile), fileName);
   return form;
 }
 
@@ -158,8 +170,8 @@ export async function fetchInvoices(params?: { upcoming_only?: boolean; overdue_
   return data;
 }
 
-export async function uploadInvoicePdf(fileUri: string, fileName: string) {
-  const { data } = await api.post<Invoice>("/invoices/upload", pdfFormData(fileUri, fileName), {
+export async function uploadInvoicePdf(fileUri: string, fileName: string, webFile?: File | Blob | null) {
+  const { data } = await api.post<Invoice>("/invoices/upload", pdfFormData(fileUri, fileName, webFile), {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return data;
@@ -204,20 +216,27 @@ export async function fetchClinicalDocuments() {
   return data;
 }
 
-export async function uploadClinicalDocument(fileUri: string, fileName: string) {
-  const { data } = await api.post<ClinicalDocument>("/assistant/documents/upload", pdfFormData(fileUri, fileName), {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+export async function uploadClinicalDocument(fileUri: string, fileName: string, webFile?: File | Blob | null) {
+  const { data } = await api.post<ClinicalDocument>(
+    "/assistant/documents/upload",
+    pdfFormData(fileUri, fileName, webFile),
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
   return data;
 }
 
 // --- Check-ins (employee tracking) ---
 
-export async function createCheckIn(hospitalId: number, photoUri: string, comment?: string) {
+export async function createCheckIn(
+  hospitalId: number,
+  photoUri: string,
+  comment?: string,
+  webFile?: File | Blob | null
+) {
   const form = new FormData();
   form.append("hospital_id", String(hospitalId));
   if (comment) form.append("comment", comment);
-  form.append("photo", { uri: photoUri, name: "checkin.jpg", type: "image/jpeg" } as any);
+  form.append("photo", filePart(photoUri, "checkin.jpg", "image/jpeg", webFile), "checkin.jpg");
   const { data } = await api.post<CheckIn>("/checkins", form, {
     headers: { "Content-Type": "multipart/form-data" },
   });
@@ -235,5 +254,59 @@ export function checkinPhotoUrl(id: number) {
 
 export async function updateCheckInComment(id: number, comment: string | null) {
   const { data } = await api.patch<CheckIn>(`/checkins/${id}`, { comment });
+  return data;
+}
+
+export async function deleteCheckIn(id: number) {
+  await api.delete(`/checkins/${id}`);
+}
+
+// --- Bulk uploads (admin) ---
+
+export interface BulkUploadResult {
+  created: number;
+  skipped?: number;
+  errors: any[];
+}
+
+function csvFormData(fileUri: string, fileName: string, webFile?: File | Blob | null): FormData {
+  const form = new FormData();
+  form.append("file", filePart(fileUri, fileName, "text/csv", webFile), fileName);
+  return form;
+}
+
+export async function bulkUploadHospitals(fileUri: string, fileName: string, webFile?: File | Blob | null) {
+  const { data } = await api.post<BulkUploadResult>(
+    "/hospitals/bulk-upload",
+    csvFormData(fileUri, fileName, webFile),
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+}
+
+export async function bulkUploadProducts(fileUri: string, fileName: string, webFile?: File | Blob | null) {
+  const { data } = await api.post<BulkUploadResult>(
+    "/products/bulk-upload",
+    csvFormData(fileUri, fileName, webFile),
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+}
+
+export async function bulkUploadStock(fileUri: string, fileName: string, webFile?: File | Blob | null) {
+  const { data } = await api.post<BulkUploadResult>("/stock/bulk-upload", csvFormData(fileUri, fileName, webFile), {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function bulkUploadInvoices(files: { uri: string; name: string; webFile?: File | Blob | null }[]) {
+  const form = new FormData();
+  for (const file of files) {
+    form.append("files", filePart(file.uri, file.name, "application/pdf", file.webFile), file.name);
+  }
+  const { data } = await api.post<{ created: number; errors: any[] }>("/invoices/bulk-upload", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return data;
 }

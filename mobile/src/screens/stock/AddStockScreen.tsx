@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import Alert from "../../utils/alert";
 import { useFocusEffect } from "@react-navigation/native";
 import { createStockItem, fetchHospitals, fetchProducts } from "../../api/services";
 import { Hospital, Product } from "../../types";

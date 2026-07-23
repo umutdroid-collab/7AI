@@ -3,7 +3,7 @@ from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
 from app.database import get_db
@@ -67,7 +67,7 @@ def list_checkins(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    query = db.query(CheckIn)
+    query = db.query(CheckIn).options(joinedload(CheckIn.user), joinedload(CheckIn.hospital))
 
     if current_user.role != UserRole.ADMIN:
         query = query.filter(CheckIn.user_id == current_user.id)

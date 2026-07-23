@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.deps import get_current_user, require_admin
@@ -70,7 +70,7 @@ def create_target(
 
 @router.get("", response_model=list[SalesTargetOut])
 def list_targets(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    query = db.query(SalesTarget)
+    query = db.query(SalesTarget).options(joinedload(SalesTarget.product), joinedload(SalesTarget.assigned_user))
     if user.role != UserRole.ADMIN:
         query = query.filter(
             (SalesTarget.assigned_user_id == user.id) | (SalesTarget.assigned_user_id.is_(None))

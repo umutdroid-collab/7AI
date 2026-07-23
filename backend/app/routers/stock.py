@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
 from app.database import get_db
@@ -51,7 +51,11 @@ def list_stock(
     status: belirli bir durumu filtrelemek için (örn. "used" ile Kullanım sekmesi hangi hastanede
     kullanıldığını gösterir). Verilirse include_used göz ardı edilir.
     """
-    query = db.query(StockItem).join(Product)
+    query = db.query(StockItem).join(Product).options(
+        joinedload(StockItem.product),
+        joinedload(StockItem.hospital),
+        joinedload(StockItem.carried_by),
+    )
     if hospital_id is not None:
         query = query.filter(StockItem.hospital_id == hospital_id)
     if carried_by_user_id is not None:

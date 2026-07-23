@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p /app/data/invoices /app/data/clinical_docs /app/data/vectorstore
+RUN mkdir -p /app/data/invoices /app/data/clinical_docs /app/data/vectorstore /app/data/checkins
 
 EXPOSE 8000
 

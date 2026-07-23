@@ -3,13 +3,21 @@ import re
 import time
 
 
-def safe_pdf_filename(original_name: str) -> str:
+def safe_filename(original_name: str, allowed_extensions: tuple[str, ...], default_ext: str) -> str:
     """Yüklenen dosya adını path traversal ve tehlikeli karakterlerden arındırır."""
-    name = os.path.basename(original_name or "dosya.pdf")
+    name = os.path.basename(original_name or f"dosya{default_ext}")
     name = re.sub(r"[^A-Za-z0-9._\-ÇĞİÖŞÜçğıöşü ]", "_", name)
-    if not name.lower().endswith(".pdf"):
-        name += ".pdf"
+    if not name.lower().endswith(allowed_extensions):
+        name += default_ext
     return name
+
+
+def safe_pdf_filename(original_name: str) -> str:
+    return safe_filename(original_name, (".pdf",), ".pdf")
+
+
+def safe_image_filename(original_name: str) -> str:
+    return safe_filename(original_name, (".jpg", ".jpeg", ".png", ".heic", ".webp"), ".jpg")
 
 
 def unique_destination(folder: str, filename: str) -> str:

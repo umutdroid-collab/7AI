@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     clinical_docs_folder: str = "./data/clinical_docs"
     vector_db_dir: str = "./data/vectorstore"
 
+    checkin_photos_folder: str = "./data/checkins"
+
     qwen_base_url: str = "http://localhost:11434/v1"
     qwen_api_key: str = "ollama"
     qwen_model: str = "qwen2.5:14b-instruct"

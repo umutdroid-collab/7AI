@@ -6,8 +6,8 @@ literatür asistanı içeren mobil uygulama. İki parçadan oluşur:
 - **`backend/`** — FastAPI ile yazılmış REST API (veritabanı, fatura PDF
   okuma, hatırlatmalar, Qwen tabanlı RAG asistanı).
 - **`mobile/`** — Expo (React Native + TypeScript) ile yazılmış, iOS ve
-  Android'de çalışan mobil istemci. 3 sekme: **Stok Takip**, **Fatura
-  Takip**, **Klinik Asistan**.
+  Android'de çalışan mobil istemci. 4 sekme: **Stok Takip**, **Fatura
+  Takip**, **Klinik Asistan**, **Çalışan Takip**.
 
 > Çalışanlarınızın telefonlarından erişebileceği şekilde backend'i canlıya
 > almak için **`DEPLOYMENT.md`** dosyasındaki adım adım Railway rehberine
@@ -93,6 +93,16 @@ Qwen'i bağlamak için `.env` dosyasında `QWEN_BASE_URL`, `QWEN_API_KEY`,
 `QWEN_MODEL` değişkenlerini kendi ortamınıza göre ayarlamanız yeterli
 (bkz. `backend/.env.example`).
 
+## 4) Çalışan Takip
+
+Çalışanlar sabah hastaneye vardıklarında bu sekmeden hastaneyi seçip
+kamerayla bir fotoğraf çekerek giriş yapar (`POST /checkins`); isterlerse
+o hastaneyle ilgili bir not da ekleyebilirler. Kayıt anı otomatik olarak
+"işe başlama saati", seçilen hastane de "o an nerede oldukları" olarak
+tutulur. Çalışanlar yalnızca kendi geçmişlerini görür; yönetici hesabı
+"Tüm Ekip" görünümüyle herkesin ne zaman hangi hastanede giriş yaptığını
+ve yazdıkları notları görebilir.
+
 ---
 
 ## Kurulum
@@ -147,6 +157,7 @@ Tüm değişkenler ve açıklamaları `backend/.env.example` dosyasında.
 | `CLINICAL_DOCS_FOLDER` | İndekslenen klinik çalışma PDF klasörü |
 | `QWEN_BASE_URL` / `QWEN_API_KEY` / `QWEN_MODEL` | Qwen'in sunulduğu OpenAI-uyumlu uç nokta |
 | `PUBMED_EMAIL` / `PUBMED_API_KEY` | NCBI E-utilities için (opsiyonel ama önerilir) |
+| `CHECKIN_PHOTOS_FOLDER` | Çalışan giriş fotoğraflarının saklandığı klasör |
 
 ## Sonraki adımlar / bilinmesi gerekenler
 

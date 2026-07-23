@@ -108,3 +108,11 @@ export interface ClinicalDocument {
   num_chunks: number;
   indexed_at: string;
 }
+
+export interface CheckIn {
+  id: number;
+  user: User;
+  hospital: Hospital;
+  comment: string | null;
+  checked_in_at: string;
+}

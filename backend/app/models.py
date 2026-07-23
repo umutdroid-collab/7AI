@@ -179,3 +179,19 @@ class ChatLog(Base):
     was_answered: Mapped[bool] = mapped_column(Boolean, default=True)
     sources_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class CheckIn(Base):
+    """Bir çalışanın sabah hastaneye vardığında fotoğraf çekerek yaptığı giriş kaydı."""
+
+    __tablename__ = "check_ins"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    hospital_id: Mapped[int] = mapped_column(ForeignKey("hospitals.id"))
+    photo_path: Mapped[str] = mapped_column(String(500))
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    checked_in_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship()
+    hospital: Mapped["Hospital"] = relationship()

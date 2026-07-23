@@ -14,6 +14,8 @@ backend/data/clinical_docs/*
 !backend/data/clinical_docs/.gitkeep
 backend/data/vectorstore/*
 !backend/data/vectorstore/.gitkeep
+backend/data/checkins/*
+!backend/data/checkins/.gitkeep
 backend/.env
 
 # --- Node / mobile ---

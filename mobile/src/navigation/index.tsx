@@ -16,10 +16,12 @@ import InvoiceListScreen from "../screens/invoices/InvoiceListScreen";
 import InvoiceDetailScreen from "../screens/invoices/InvoiceDetailScreen";
 import NotificationsScreen from "../screens/invoices/NotificationsScreen";
 import AssistantChatScreen from "../screens/assistant/AssistantChatScreen";
+import CheckInScreen from "../screens/checkins/CheckInScreen";
 
 const StockStackNav = createNativeStackNavigator();
 const InvoiceStackNav = createNativeStackNavigator();
 const AssistantStackNav = createNativeStackNavigator();
+const CheckInStackNav = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const screenOptions = {
@@ -69,6 +71,18 @@ function AssistantStack() {
   );
 }
 
+function CheckInStack() {
+  return (
+    <CheckInStackNav.Navigator screenOptions={screenOptions}>
+      <CheckInStackNav.Screen
+        name="CheckIn"
+        component={CheckInScreen}
+        options={{ title: "Çalışan Takip", headerRight: () => <HeaderLogoutButton /> }}
+      />
+    </CheckInStackNav.Navigator>
+  );
+}
+
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -82,6 +96,7 @@ function MainTabs() {
       <Tab.Screen name="Stok" component={StockStack} options={{ tabBarLabel: "Stok Takip" }} />
       <Tab.Screen name="Fatura" component={InvoiceStack} options={{ tabBarLabel: "Fatura Takip" }} />
       <Tab.Screen name="Asistan" component={AssistantStack} options={{ tabBarLabel: "Klinik Asistan" }} />
+      <Tab.Screen name="Takip" component={CheckInStack} options={{ tabBarLabel: "Çalışan Takip" }} />
     </Tab.Navigator>
   );
 }

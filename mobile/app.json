@@ -11,14 +11,26 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sirket.sahauygulamasi"
+      "bundleIdentifier": "com.sirket.sahauygulamasi",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Hastane giriş kaydı için fotoğraf çekmek amacıyla kameraya erişim gerekir."
+      }
     },
     "android": {
       "package": "com.sirket.sahauygulamasi",
       "adaptiveIcon": {
         "backgroundColor": "#0f172a"
-      }
+      },
+      "permissions": ["CAMERA"]
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Hastane giriş kaydı için fotoğraf çekmek amacıyla kameraya erişim gerekir."
+        }
+      ]
+    ],
     "extra": {
       "apiBaseUrl": "http://localhost:8000"
     }

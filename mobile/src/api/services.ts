@@ -1,6 +1,7 @@
 import { api } from "./client";
 import {
   ChatResponse,
+  CheckIn,
   ClinicalDocument,
   Hospital,
   Invoice,
@@ -148,5 +149,32 @@ export async function uploadClinicalDocument(fileUri: string, fileName: string) 
   const { data } = await api.post<ClinicalDocument>("/assistant/documents/upload", pdfFormData(fileUri, fileName), {
     headers: { "Content-Type": "multipart/form-data" },
   });
+  return data;
+}
+
+// --- Check-ins (employee tracking) ---
+
+export async function createCheckIn(hospitalId: number, photoUri: string, comment?: string) {
+  const form = new FormData();
+  form.append("hospital_id", String(hospitalId));
+  if (comment) form.append("comment", comment);
+  form.append("photo", { uri: photoUri, name: "checkin.jpg", type: "image/jpeg" } as any);
+  const { data } = await api.post<CheckIn>("/checkins", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function fetchCheckIns(params?: { user_id?: number; hospital_id?: number; day?: string }) {
+  const { data } = await api.get<CheckIn[]>("/checkins", { params });
+  return data;
+}
+
+export function checkinPhotoUrl(id: number) {
+  return `/checkins/${id}/photo`;
+}
+
+export async function updateCheckInComment(id: number, comment: string | null) {
+  const { data } = await api.patch<CheckIn>(`/checkins/${id}`, { comment });
   return data;
 }

@@ -5,4 +5,5 @@ data/app.db
 data/invoices/*
 data/clinical_docs/*
 data/vectorstore/*
+data/checkins/*
 .env

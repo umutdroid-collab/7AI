@@ -156,6 +156,23 @@ class NotificationOut(BaseModel):
         from_attributes = True
 
 
+# --- Check-ins ---
+
+class CheckInOut(BaseModel):
+    id: int
+    user: UserOut
+    hospital: HospitalOut
+    comment: str | None
+    checked_in_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CheckInUpdate(BaseModel):
+    comment: str | None = None
+
+
 # --- Assistant ---
 
 class ChatRequest(BaseModel):

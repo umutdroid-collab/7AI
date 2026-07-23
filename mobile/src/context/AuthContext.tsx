@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import * as SecureStore from "expo-secure-store";
+import secureStorage from "../utils/secureStorage";
 import { TOKEN_KEY } from "../api/client";
 import { fetchMe, login as loginRequest } from "../api/services";
 import { User } from "../types";
@@ -19,13 +19,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      const token = await secureStorage.getItemAsync(TOKEN_KEY);
       if (token) {
         try {
           const me = await fetchMe();
           setUser(me);
         } catch {
-          await SecureStore.deleteItemAsync(TOKEN_KEY);
+          await secureStorage.deleteItemAsync(TOKEN_KEY);
         }
       }
       setIsLoading(false);
@@ -34,12 +34,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function login(email: string, password: string) {
     const result = await loginRequest(email, password);
-    await SecureStore.setItemAsync(TOKEN_KEY, result.access_token);
+    await secureStorage.setItemAsync(TOKEN_KEY, result.access_token);
     setUser(result.user);
   }
 
   async function logout() {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await secureStorage.deleteItemAsync(TOKEN_KEY);
     setUser(null);
   }
 

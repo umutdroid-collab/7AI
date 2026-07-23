@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
-import * as SecureStore from "expo-secure-store";
+import secureStorage from "../../utils/secureStorage";
 import { createCheckIn, fetchCheckIns, fetchHospitals } from "../../api/services";
 import { CheckIn, Hospital } from "../../types";
 import { colors, spacing } from "../../theme";
@@ -37,7 +37,7 @@ export default function CheckInScreen() {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    SecureStore.getItemAsync(TOKEN_KEY).then(setToken);
+    secureStorage.getItemAsync(TOKEN_KEY).then(setToken);
   }, []);
 
   useFocusEffect(

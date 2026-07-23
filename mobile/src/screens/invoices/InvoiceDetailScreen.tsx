@@ -1,11 +1,11 @@
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
-import * as SecureStore from "expo-secure-store";
+import secureStorage from "../../utils/secureStorage";
+import { api, apiErrorMessage, API_BASE_URL, TOKEN_KEY } from "../../api/client";
 import { fetchInvoice, invoicePdfUrl } from "../../api/services";
-import { API_BASE_URL, TOKEN_KEY, apiErrorMessage } from "../../api/client";
 import { Invoice } from "../../types";
 import { colors, spacing } from "../../theme";
 
@@ -36,15 +36,27 @@ export default function InvoiceDetailScreen({ route }: any) {
     if (!invoice) return;
     setIsDownloading(true);
     try {
-      const token = await SecureStore.getItemAsync(TOKEN_KEY);
-      const localUri = `${FileSystem.cacheDirectory}${invoice.source_filename}`;
-      const result = await FileSystem.downloadAsync(`${API_BASE_URL}${invoicePdfUrl(invoice.id)}`, localUri, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(result.uri, { mimeType: "application/pdf" });
+      if (Platform.OS === "web") {
+        const response = await api.get(invoicePdfUrl(invoice.id), { responseType: "blob" });
+        const blobUrl = URL.createObjectURL(response.data as Blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = invoice.source_filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
       } else {
-        Alert.alert("İndirildi", `PDF kaydedildi: ${result.uri}`);
+        const token = await secureStorage.getItemAsync(TOKEN_KEY);
+        const localUri = `${FileSystem.cacheDirectory}${invoice.source_filename}`;
+        const result = await FileSystem.downloadAsync(`${API_BASE_URL}${invoicePdfUrl(invoice.id)}`, localUri, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(result.uri, { mimeType: "application/pdf" });
+        } else {
+          Alert.alert("İndirildi", `PDF kaydedildi: ${result.uri}`);
+        }
       }
     } catch (e) {
       Alert.alert("Hata", "PDF indirilemedi");

@@ -5,13 +5,39 @@ literatür asistanı içeren mobil uygulama. İki parçadan oluşur:
 
 - **`backend/`** — FastAPI ile yazılmış REST API (veritabanı, fatura PDF
   okuma, hatırlatmalar, Qwen tabanlı RAG asistanı).
-- **`mobile/`** — Expo (React Native + TypeScript) ile yazılmış, iOS ve
-  Android'de çalışan mobil istemci. 4 sekme: **Stok Takip**, **Fatura
-  Takip**, **Klinik Asistan**, **Çalışan Takip**.
+- **`mobile/`** — Expo (React Native + TypeScript) ile yazılmış, aynı
+  kod tabanından hem iOS/Android native uygulama hem de bir **web
+  uygulaması (PWA)** olarak çalışabilen istemci. 4 sekme: **Stok Takip**,
+  **Fatura Takip**, **Klinik Asistan**, **Çalışan Takip**.
 
 > Çalışanlarınızın telefonlarından erişebileceği şekilde backend'i canlıya
 > almak için **`DEPLOYMENT.md`** dosyasındaki adım adım Railway rehberine
 > bakın.
+
+## Mobil uygulamayı web (PWA) olarak dağıtma
+
+App Store/Play Store ücreti ödemeden, App Store harici dağıtım
+kısıtlamalarına takılmadan çalışanlarınıza ulaştırmanın yolu: uygulamayı
+bir web sitesi olarak yayınlamak. Çalışanlar Safari/Chrome'da siteyi açıp
+"Ana Ekrana Ekle" dediğinde, telefonlarında gerçek bir uygulama gibi
+görünen bir simge oluşur (tarayıcı çerçevesi olmadan tam ekran açılır).
+
+```bash
+cd mobile
+npm run build:web
+```
+
+Bu komut `mobile/dist/` klasörüne statik bir site üretir (HTML/JS/CSS +
+`manifest.json` + ikonlar). Bu klasörü herhangi bir statik site
+barındırma servisine (Cloudflare Pages, Netlify, Vercel — hepsinin
+ücretsiz planı yeterlidir) yükleyebilirsiniz.
+
+Bilinen platform farkları:
+- Kamera girişi (Çalışan Takip) tarayıcının kamera izniyle çalışır;
+  yerel uygulamadaki kadar sorunsuz ama davranışı tarayıcıya göre
+  hafif değişebilir.
+- Fatura PDF'i indirme, native'de olduğu gibi paylaşım menüsü yerine
+  tarayıcının kendi indirme mekanizmasını kullanır.
 
 ## Neden bu mimari?
 

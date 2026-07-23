@@ -1,8 +1,8 @@
-import React from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Image, Platform, StyleSheet, Text, View } from "react-native";
 import { CheckIn } from "../types";
 import { colors, spacing } from "../theme";
-import { API_BASE_URL } from "../api/client";
+import { api, API_BASE_URL } from "../api/client";
 import { checkinPhotoUrl } from "../api/services";
 
 export default function CheckInCard({
@@ -14,11 +14,35 @@ export default function CheckInCard({
   token: string | null;
   showEmployee: boolean;
 }) {
+  const [webPhotoUri, setWebPhotoUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    let objectUrl: string | null = null;
+    api
+      .get(checkinPhotoUrl(checkin.id), { responseType: "blob" })
+      .then((response) => {
+        objectUrl = URL.createObjectURL(response.data as Blob);
+        setWebPhotoUri(objectUrl);
+      })
+      .catch(() => {});
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [checkin.id]);
+
+  const photoUri =
+    Platform.OS === "web" ? webPhotoUri : `${API_BASE_URL}${checkinPhotoUrl(checkin.id)}`;
+
   return (
     <View style={styles.card}>
-      {token && (
+      {photoUri && (
         <Image
-          source={{ uri: `${API_BASE_URL}${checkinPhotoUrl(checkin.id)}`, headers: { Authorization: `Bearer ${token}` } }}
+          source={
+            Platform.OS === "web"
+              ? { uri: photoUri }
+              : { uri: photoUri, headers: token ? { Authorization: `Bearer ${token}` } : undefined }
+          }
           style={styles.photo}
         />
       )}

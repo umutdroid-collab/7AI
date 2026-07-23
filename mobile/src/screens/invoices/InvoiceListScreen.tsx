@@ -10,7 +10,7 @@ import InvoiceCard from "../../components/InvoiceCard";
 import { apiErrorMessage } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 
-type Filter = "all" | "upcoming" | "overdue";
+type Filter = "all" | "upcoming" | "overdue" | "paid";
 
 export default function InvoiceListScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -29,7 +29,7 @@ export default function InvoiceListScreen({ navigation }: any) {
       if (filter === "upcoming") params.upcoming_only = true;
       if (filter === "overdue") params.overdue_only = true;
       const [data, unread] = await Promise.all([fetchInvoices(params), fetchNotifications(true)]);
-      setInvoices(data);
+      setInvoices(filter === "paid" ? data.filter((i) => i.status === "paid") : data);
       setUnreadCount(unread.length);
     } catch (e) {
       setError(apiErrorMessage(e));
@@ -100,6 +100,7 @@ export default function InvoiceListScreen({ navigation }: any) {
         <Chip label="Tümü" active={filter === "all"} onPress={() => setFilter("all")} />
         <Chip label="Vadesi Yaklaşan" active={filter === "upcoming"} onPress={() => setFilter("upcoming")} />
         <Chip label="Vadesi Geçmiş" active={filter === "overdue"} onPress={() => setFilter("overdue")} />
+        <Chip label="Ödendi" active={filter === "paid"} onPress={() => setFilter("paid")} />
       </ScrollView>
 
       {isLoading ? (

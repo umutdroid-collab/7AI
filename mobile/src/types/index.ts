@@ -118,3 +118,22 @@ export interface CheckIn {
   comment: string | null;
   checked_in_at: string;
 }
+
+export interface SalesTargetContributor {
+  user_id: number;
+  full_name: string;
+  quantity: number;
+}
+
+export interface SalesTarget {
+  id: number;
+  product: Product;
+  assigned_user: User | null;
+  target_quantity: number;
+  period_start: string;
+  period_end: string;
+  note: string | null;
+  created_at: string;
+  progress: number;
+  contributors: SalesTargetContributor[];
+}

@@ -213,3 +213,36 @@ class ClinicalDocumentOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# --- Sales targets (Personel Takip) ---
+
+class SalesTargetCreate(BaseModel):
+    product_id: int
+    assigned_user_id: int | None = None  # None = tüm ekip için ortak hedef
+    target_quantity: int
+    period_start: date
+    period_end: date
+    note: str | None = None
+
+
+class SalesTargetContributor(BaseModel):
+    user_id: int
+    full_name: str
+    quantity: int
+
+
+class SalesTargetOut(BaseModel):
+    id: int
+    product: ProductOut
+    assigned_user: UserOut | None
+    target_quantity: int
+    period_start: date
+    period_end: date
+    note: str | None
+    created_at: datetime
+    progress: int = 0
+    contributors: list[SalesTargetContributor] = []
+
+    class Config:
+        from_attributes = True

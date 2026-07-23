@@ -8,6 +8,7 @@ import {
   Invoice,
   Notification,
   Product,
+  SalesTarget,
   StockItem,
   StockMovement,
   User,
@@ -186,6 +187,11 @@ export function invoicePdfUrl(invoiceId: number) {
   return `/invoices/${invoiceId}/pdf`;
 }
 
+export async function updateInvoiceStatus(invoiceId: number, status: Invoice["status"]) {
+  const { data } = await api.patch<Invoice>(`/invoices/${invoiceId}`, { status });
+  return data;
+}
+
 // --- Notifications ---
 
 export async function fetchNotifications(unreadOnly = false) {
@@ -309,4 +315,27 @@ export async function bulkUploadInvoices(files: { uri: string; name: string; web
     headers: { "Content-Type": "multipart/form-data" },
   });
   return data;
+}
+
+// --- Sales targets (Personel Takip) ---
+
+export async function fetchSalesTargets() {
+  const { data } = await api.get<SalesTarget[]>("/targets");
+  return data;
+}
+
+export async function createSalesTarget(payload: {
+  product_id: number;
+  assigned_user_id?: number | null;
+  target_quantity: number;
+  period_start: string;
+  period_end: string;
+  note?: string;
+}) {
+  const { data } = await api.post<SalesTarget>("/targets", payload);
+  return data;
+}
+
+export async function deleteSalesTarget(id: number) {
+  await api.delete(`/targets/${id}`);
 }

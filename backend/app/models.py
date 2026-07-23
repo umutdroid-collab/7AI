@@ -200,3 +200,24 @@ class CheckIn(Base):
 
     user: Mapped["User"] = relationship()
     hospital: Mapped["Hospital"] = relationship()
+
+
+class SalesTarget(Base):
+    """Bir çalışana veya tüm ekibe verilen satış hedefi (örn. 'bu ay 10 adet
+    lomber drenaj sat'). İlerleme, bu ürün için USE tipindeki stok
+    hareketlerinden otomatik hesaplanır, ekstra veri girişi gerekmez."""
+
+    __tablename__ = "sales_targets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    assigned_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    target_quantity: Mapped[int] = mapped_column(Integer)
+    period_start: Mapped[date] = mapped_column(Date)
+    period_end: Mapped[date] = mapped_column(Date)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    product: Mapped["Product"] = relationship()
+    assigned_user: Mapped["User | None"] = relationship(foreign_keys=[assigned_user_id])

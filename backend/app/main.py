@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import Base, engine
-from app.routers import assistant, auth, checkins, hospitals, invoices, notifications, products, stock
+from app.routers import assistant, auth, checkins, hospitals, invoices, notifications, products, sales_targets, stock
 from app.seed import seed_default_admin
 from app.services.invoice_watcher import start_invoice_watcher
 from app.services.reminders import start_scheduler
@@ -70,6 +70,7 @@ app.include_router(products.router)
 app.include_router(stock.router)
 app.include_router(invoices.router)
 app.include_router(checkins.router)
+app.include_router(sales_targets.router)
 app.include_router(notifications.router)
 app.include_router(assistant.router)
 

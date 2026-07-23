@@ -21,11 +21,14 @@ import AssistantChatScreen from "../screens/assistant/AssistantChatScreen";
 import CheckInScreen from "../screens/checkins/CheckInScreen";
 import ProfileScreen from "../screens/profile/ProfileScreen";
 import BulkUploadScreen from "../screens/profile/BulkUploadScreen";
+import PersonelTakipScreen from "../screens/targets/PersonelTakipScreen";
+import AddSalesTargetScreen from "../screens/targets/AddSalesTargetScreen";
 
 const StockStackNav = createNativeStackNavigator();
 const InvoiceStackNav = createNativeStackNavigator();
 const AssistantStackNav = createNativeStackNavigator();
 const CheckInStackNav = createNativeStackNavigator();
+const TargetsStackNav = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const screenOptions = {
@@ -97,6 +100,21 @@ function CheckInStack() {
   );
 }
 
+function TargetsStack() {
+  return (
+    <TargetsStackNav.Navigator screenOptions={screenOptions}>
+      <TargetsStackNav.Screen
+        name="PersonelTakip"
+        component={PersonelTakipScreen}
+        options={({ navigation }) => ({ title: "Personel Takip", headerRight: () => <HeaderProfileButton navigation={navigation} /> })}
+      />
+      <TargetsStackNav.Screen name="AddSalesTarget" component={AddSalesTargetScreen} options={{ title: "Yeni Hedef" }} />
+      <TargetsStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
+      <TargetsStackNav.Screen name="BulkUpload" component={BulkUploadScreen} options={{ title: "Toplu Ekleme" }} />
+    </TargetsStackNav.Navigator>
+  );
+}
+
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -111,6 +129,7 @@ function MainTabs() {
       <Tab.Screen name="Fatura" component={InvoiceStack} options={{ tabBarLabel: "Fatura Takip" }} />
       <Tab.Screen name="Asistan" component={AssistantStack} options={{ tabBarLabel: "Klinik Asistan" }} />
       <Tab.Screen name="Takip" component={CheckInStack} options={{ tabBarLabel: "Çalışan Takip" }} />
+      <Tab.Screen name="Personel" component={TargetsStack} options={{ tabBarLabel: "Personel" }} />
     </Tab.Navigator>
   );
 }

@@ -6,15 +6,18 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import secureStorage from "../../utils/secureStorage";
 import { api, apiErrorMessage, API_BASE_URL, TOKEN_KEY } from "../../api/client";
-import { fetchInvoice, invoicePdfUrl } from "../../api/services";
+import { fetchInvoice, invoicePdfUrl, updateInvoiceStatus } from "../../api/services";
 import { Invoice } from "../../types";
 import { colors, spacing } from "../../theme";
+import { useAuth } from "../../context/AuthContext";
 
 export default function InvoiceDetailScreen({ route }: any) {
+  const { user } = useAuth();
   const { invoiceId } = route.params;
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -66,6 +69,20 @@ export default function InvoiceDetailScreen({ route }: any) {
     }
   }
 
+  async function handleToggleStatus() {
+    if (!invoice) return;
+    const nextStatus = invoice.status === "paid" ? "parsed" : "paid";
+    setIsUpdatingStatus(true);
+    try {
+      const updated = await updateInvoiceStatus(invoice.id, nextStatus);
+      setInvoice(updated);
+    } catch (e) {
+      Alert.alert("Hata", apiErrorMessage(e));
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  }
+
   if (isLoading || !invoice) {
     return <ActivityIndicator style={{ marginTop: spacing(4) }} color={colors.primary} />;
   }
@@ -100,6 +117,22 @@ export default function InvoiceDetailScreen({ route }: any) {
           <Text style={styles.downloadButtonText}>PDF İndir / Paylaş</Text>
         )}
       </TouchableOpacity>
+
+      {user?.role === "admin" && (
+        <TouchableOpacity
+          style={[styles.statusButton, invoice.status === "paid" && styles.statusButtonUndo]}
+          onPress={handleToggleStatus}
+          disabled={isUpdatingStatus}
+        >
+          {isUpdatingStatus ? (
+            <ActivityIndicator color={invoice.status === "paid" ? colors.text : "#0f172a"} />
+          ) : (
+            <Text style={[styles.statusButtonText, invoice.status === "paid" && styles.statusButtonUndoText]}>
+              {invoice.status === "paid" ? "Ödendi İşaretini Kaldır" : "Ödendi Olarak İşaretle"}
+            </Text>
+          )}
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 }
@@ -141,4 +174,14 @@ const styles = StyleSheet.create({
     marginTop: spacing(3),
   },
   downloadButtonText: { color: "#0f172a", fontWeight: "700" },
+  statusButton: {
+    backgroundColor: colors.success,
+    borderRadius: 10,
+    paddingVertical: spacing(1.75),
+    alignItems: "center",
+    marginTop: spacing(1.5),
+  },
+  statusButtonText: { color: "#0f172a", fontWeight: "700" },
+  statusButtonUndo: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  statusButtonUndoText: { color: colors.text },
 });

@@ -18,14 +18,15 @@ function dueLabel(days: number | null): string {
 }
 
 export default function InvoiceCard({ invoice, onPress }: { invoice: Invoice; onPress: () => void }) {
+  const isPaid = invoice.status === "paid";
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
       <View style={styles.headerRow}>
         <Text style={styles.number} numberOfLines={1}>
           {invoice.invoice_number || invoice.source_filename}
         </Text>
-        <View style={[styles.badge, { backgroundColor: dueColor(invoice.days_to_due) }]}>
-          <Text style={styles.badgeText}>{dueLabel(invoice.days_to_due)}</Text>
+        <View style={[styles.badge, { backgroundColor: isPaid ? colors.success : dueColor(invoice.days_to_due) }]}>
+          <Text style={styles.badgeText}>{isPaid ? "Ödendi" : dueLabel(invoice.days_to_due)}</Text>
         </View>
       </View>
       <Text style={styles.counterparty} numberOfLines={1}>

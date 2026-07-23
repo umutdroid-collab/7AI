@@ -19,6 +19,7 @@ import { apiErrorMessage, TOKEN_KEY } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import CheckInCard from "../../components/CheckInCard";
 import HospitalPickerModal from "../../components/HospitalPickerModal";
+import ErrorRetry from "../../components/ErrorRetry";
 
 type ViewMode = "mine" | "team";
 
@@ -152,7 +153,7 @@ export default function CheckInScreen() {
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing(2) }} />
         ) : error ? (
-          <Text style={styles.error}>{error}</Text>
+          <ErrorRetry message={error} onRetry={load} />
         ) : checkins.length === 0 ? (
           <Text style={styles.empty}>Henüz giriş kaydı yok</Text>
         ) : (

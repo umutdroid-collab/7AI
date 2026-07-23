@@ -11,6 +11,15 @@ import { Invoice } from "../../types";
 import { colors, spacing } from "../../theme";
 import { useAuth } from "../../context/AuthContext";
 
+const STATUS_LABELS: Record<string, string> = {
+  parsed: "Okundu",
+  needs_review: "Kontrol Gerekli",
+  paid: "Ödendi",
+  overdue: "Vadesi Geçti",
+  upcoming: "Yaklaşıyor",
+  open: "Açık",
+};
+
 export default function InvoiceDetailScreen({ route }: any) {
   const { user } = useAuth();
   const { invoiceId } = route.params;
@@ -99,8 +108,8 @@ export default function InvoiceDetailScreen({ route }: any) {
           value={invoice.amount ? `${invoice.amount.toLocaleString("tr-TR")} ${invoice.currency}` : "-"}
         />
         <InfoRow label="Tedarikçi / Firma" value={invoice.counterparty || "-"} />
-        <InfoRow label="Kaynak dosya" value={invoice.source_filename} />
-        <InfoRow label="Durum" value={invoice.status} />
+        <InfoRow label="Kaynak dosya" value={invoice.source_filename} truncate />
+        <InfoRow label="Durum" value={STATUS_LABELS[invoice.status] ?? invoice.status} />
         <InfoRow label="Otomatik okuma güveni" value={`%${Math.round(invoice.parse_confidence * 100)}`} />
       </View>
 
@@ -137,11 +146,17 @@ export default function InvoiceDetailScreen({ route }: any) {
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({ label, value, truncate }: { label: string; value: string; truncate?: boolean }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+      <Text
+        style={styles.infoValue}
+        numberOfLines={truncate ? 1 : undefined}
+        ellipsizeMode={truncate ? "middle" : undefined}
+      >
+        {value}
+      </Text>
     </View>
   );
 }

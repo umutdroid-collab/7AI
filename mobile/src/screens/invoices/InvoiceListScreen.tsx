@@ -7,6 +7,7 @@ import { fetchInvoices, fetchNotifications, uploadInvoicePdf } from "../../api/s
 import { Invoice } from "../../types";
 import { colors, spacing } from "../../theme";
 import InvoiceCard from "../../components/InvoiceCard";
+import ErrorRetry from "../../components/ErrorRetry";
 import { apiErrorMessage } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 
@@ -106,7 +107,7 @@ export default function InvoiceListScreen({ navigation }: any) {
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: spacing(4) }} color={colors.primary} />
       ) : error ? (
-        <Text style={styles.error}>{error}</Text>
+        <ErrorRetry message={error} onRetry={load} />
       ) : (
         <FlatList
           data={invoices}

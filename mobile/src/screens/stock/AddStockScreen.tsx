@@ -36,8 +36,12 @@ export default function AddStockScreen({ navigation, route }: any) {
   }, [route.params?.newProduct]);
 
   useEffect(() => {
+    if (!productQuery.trim()) {
+      setProducts([]);
+      return;
+    }
     const timeout = setTimeout(() => {
-      fetchProducts(productQuery || undefined).then(setProducts).catch(() => {});
+      fetchProducts(productQuery).then(setProducts).catch(() => {});
     }, 250);
     return () => clearTimeout(timeout);
   }, [productQuery]);

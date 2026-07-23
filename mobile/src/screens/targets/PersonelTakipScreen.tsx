@@ -7,6 +7,7 @@ import { SalesTarget } from "../../types";
 import { colors, spacing } from "../../theme";
 import { apiErrorMessage } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
+import ErrorRetry from "../../components/ErrorRetry";
 
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split("-");
@@ -119,7 +120,7 @@ export default function PersonelTakipScreen({ navigation }: any) {
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: spacing(4) }} />
         ) : error ? (
-          <Text style={styles.error}>{error}</Text>
+          <ErrorRetry message={error} onRetry={load} />
         ) : targets.length === 0 ? (
           <Text style={styles.empty}>Henüz hedef tanımlanmadı</Text>
         ) : (

@@ -17,6 +17,7 @@ import StockItemCard from "../../components/StockItemCard";
 import { apiErrorMessage } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import HospitalPickerModal from "../../components/HospitalPickerModal";
+import ErrorRetry from "../../components/ErrorRetry";
 
 type ViewMode = "active" | "used";
 
@@ -131,7 +132,7 @@ export default function StockListScreen({ navigation }: any) {
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: spacing(4) }} color={colors.primary} />
       ) : error ? (
-        <Text style={styles.error}>{error}</Text>
+        <ErrorRetry message={error} onRetry={load} />
       ) : (
         <FlatList
           data={items}

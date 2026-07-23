@@ -38,6 +38,27 @@ izlenebilir olur. Çalışanlar ref/ÜBB/lot/seri numarasıyla arama yapıp bir
 ürünün o an hangi hastanede olduğunu bulabilir. SKT'si yaklaşan/geçen
 ürünler için otomatik bildirim üretilir (`SKT_WARNING_DAYS`).
 
+### Toplu hastane/stok girişi (Excel/CSV)
+
+Onlarca/yüzlerce hastane veya stok kalemini telefondan tek tek eklemek
+yerine, admin bilgisayarında bir tablo hazırlayıp CSV olarak yükleyebilir
+(virgül veya noktalı virgülle ayrılmış her iki format da desteklenir):
+
+- **`POST /hospitals/bulk-upload`** — sütunlar: `name` (zorunlu), `city`,
+  `address`, `contact_person`, `contact_phone`. Aynı isimde hastane
+  varsa o satır sessizce atlanır.
+- **`POST /stock/bulk-upload`** — sütunlar: `reference_no`, `lot_no`,
+  `skt` (zorunlu; `2026-12-31` veya `31.12.2026` formatında), `serial_no`,
+  `quantity`, `hospital_name` (opsiyonel; boşsa depo). `reference_no` daha
+  önce eklenmiş bir ürünle, `hospital_name` daha önce eklenmiş bir
+  hastaneyle eşleşmelidir — önce ürünleri/hastaneleri ekleyin.
+
+Her iki uç nokta da `{"created": N, "skipped": N, "errors": [...]}`
+döner; `errors` listesi hangi satırda ne sorun olduğunu satır numarasıyla
+gösterir. Şu an için bu yükleme `/docs` üzerinden (Excel'den "CSV olarak
+kaydet" yapıp "Try it out" ile dosya seçerek) yapılır; mobil uygulamada
+henüz bir yükleme ekranı yok.
+
 ## 2) Fatura Takip
 
 İki şekilde fatura ekleyebilirsiniz:

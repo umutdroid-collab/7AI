@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { fetchHospitals, transferStockItem } from "../../api/services";
 import { Hospital } from "../../types";
 import { colors, spacing } from "../../theme";
 import { apiErrorMessage } from "../../api/client";
+import HospitalPickerModal from "../../components/HospitalPickerModal";
 
 export default function TransferStockScreen({ route, navigation }: any) {
   const { item } = route.params;
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null | undefined>(undefined);
+  const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -16,9 +18,13 @@ export default function TransferStockScreen({ route, navigation }: any) {
     fetchHospitals().then(setHospitals).catch(() => {});
   }, []);
 
-  const options = [{ id: null as number | null, name: "Depo (iade)" }, ...hospitals.filter((h) => h.id !== item.hospital?.id)];
+  const selectableHospitals = hospitals.filter((h) => h.id !== item.hospital?.id);
 
   async function handleConfirm() {
+    if (selectedId === undefined) {
+      Alert.alert("Hedef seçin", "Ürünü nereye taşıyacağınızı seçin");
+      return;
+    }
     setIsSubmitting(true);
     try {
       await transferStockItem(item.id, selectedId, note || undefined);
@@ -38,17 +44,24 @@ export default function TransferStockScreen({ route, navigation }: any) {
       </Text>
 
       <Text style={styles.label}>Hedef konum</Text>
-      <FlatList
-        data={options}
-        keyExtractor={(o) => String(o.id)}
-        renderItem={({ item: o }) => (
-          <TouchableOpacity
-            style={[styles.option, selectedId === o.id && styles.optionActive]}
-            onPress={() => setSelectedId(o.id)}
-          >
-            <Text style={[styles.optionText, selectedId === o.id && styles.optionTextActive]}>{o.name}</Text>
-          </TouchableOpacity>
-        )}
+      <TouchableOpacity style={styles.hospitalSelect} onPress={() => setIsPickerVisible(true)}>
+        <Text style={selectedId === undefined ? styles.hospitalSelectPlaceholder : styles.hospitalSelectText}>
+          {selectedId === undefined
+            ? "Hedef seçin..."
+            : selectedId === null
+            ? "Depo (iade)"
+            : hospitals.find((h) => h.id === selectedId)?.name}
+        </Text>
+        <Text style={styles.hospitalSelectChevron}>▾</Text>
+      </TouchableOpacity>
+
+      <HospitalPickerModal
+        visible={isPickerVisible}
+        hospitals={selectableHospitals}
+        onSelect={setSelectedId}
+        onClose={() => setIsPickerVisible(false)}
+        extraOptions={[{ id: null, name: "Depo (iade)" }]}
+        title="Hedef Konum Seç"
       />
 
       <Text style={styles.label}>Not (opsiyonel)</Text>
@@ -76,17 +89,20 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 18, fontWeight: "700" },
   subtitle: { color: colors.textMuted, marginTop: 4, marginBottom: spacing(2) },
   label: { color: colors.textMuted, fontSize: 13, marginBottom: spacing(1), marginTop: spacing(1) },
-  option: {
+  hospitalSelect: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: colors.surface,
     borderRadius: 10,
-    padding: spacing(1.5),
-    marginBottom: spacing(1),
+    paddingHorizontal: spacing(2),
+    paddingVertical: spacing(1.5),
     borderWidth: 1,
     borderColor: colors.border,
   },
-  optionActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  optionText: { color: colors.text, fontWeight: "600" },
-  optionTextActive: { color: "#0f172a" },
+  hospitalSelectText: { color: colors.text, fontSize: 14, fontWeight: "600" },
+  hospitalSelectPlaceholder: { color: colors.textMuted, fontSize: 14 },
+  hospitalSelectChevron: { color: colors.textMuted },
   input: {
     backgroundColor: colors.surface,
     borderRadius: 10,

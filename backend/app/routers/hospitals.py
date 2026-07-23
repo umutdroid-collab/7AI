@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import get_current_user, require_admin
 from app.models import Hospital, User
 from app.schemas import HospitalCreate, HospitalOut
+from app.services.bulk_import import import_hospitals_csv
 
 router = APIRouter(prefix="/hospitals", tags=["hospitals"])
 
@@ -12,6 +13,21 @@ router = APIRouter(prefix="/hospitals", tags=["hospitals"])
 @router.get("", response_model=list[HospitalOut])
 def list_hospitals(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
     return db.query(Hospital).order_by(Hospital.name).all()
+
+
+@router.post("/bulk-upload")
+async def bulk_upload_hospitals(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """CSV sütunları: name (zorunlu), city, address, contact_person, contact_phone.
+    Aynı isimde hastane zaten varsa o satır atlanır, hata sayılmaz."""
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Sadece CSV dosyası yükleyebilirsiniz")
+    content = await file.read()
+    result = import_hospitals_csv(content, db)
+    return {"created": result.created, "skipped": result.skipped, "errors": result.errors}
 
 
 @router.post("", response_model=HospitalOut)

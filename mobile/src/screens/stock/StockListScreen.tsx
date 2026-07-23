@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +16,7 @@ import { colors, spacing } from "../../theme";
 import StockItemCard from "../../components/StockItemCard";
 import { apiErrorMessage } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
+import HospitalPickerModal from "../../components/HospitalPickerModal";
 
 type ViewMode = "active" | "used";
 
@@ -24,6 +24,7 @@ export default function StockListScreen({ navigation }: any) {
   const { user } = useAuth();
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState<number | "all" | "warehouse">("all");
+  const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("active");
   const [items, setItems] = useState<StockItem[]>([]);
@@ -91,7 +92,7 @@ export default function StockListScreen({ navigation }: any) {
         returnKeyType="search"
       />
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
+      <View style={styles.chipsRow}>
         <FilterChip
           label="Tümü"
           active={selectedHospitalId === "all"}
@@ -102,20 +103,30 @@ export default function StockListScreen({ navigation }: any) {
           active={selectedHospitalId === "warehouse"}
           onPress={() => setSelectedHospitalId("warehouse")}
         />
-        {hospitals.map((h) => (
-          <FilterChip
-            key={h.id}
-            label={h.name}
-            active={selectedHospitalId === h.id}
-            onPress={() => setSelectedHospitalId(h.id)}
-          />
-        ))}
+        <TouchableOpacity
+          style={[styles.chip, typeof selectedHospitalId === "number" && styles.chipActive]}
+          onPress={() => setIsPickerVisible(true)}
+        >
+          <Text style={[styles.chipText, typeof selectedHospitalId === "number" && styles.chipTextActive]}>
+            {typeof selectedHospitalId === "number"
+              ? hospitals.find((h) => h.id === selectedHospitalId)?.name ?? "Hastane"
+              : "Hastane Seç ▾"}
+          </Text>
+        </TouchableOpacity>
         {user?.role === "admin" && (
           <TouchableOpacity style={styles.addHospitalChip} onPress={() => navigation.navigate("AddHospital")}>
             <Text style={styles.addHospitalChipText}>+ Hastane Ekle</Text>
           </TouchableOpacity>
         )}
-      </ScrollView>
+      </View>
+
+      <HospitalPickerModal
+        visible={isPickerVisible}
+        hospitals={hospitals}
+        onSelect={(id) => setSelectedHospitalId(id ?? "all")}
+        onClose={() => setIsPickerVisible(false)}
+        title="Hastaneye Göre Filtrele"
+      />
 
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: spacing(4) }} color={colors.primary} />
@@ -187,13 +198,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  chipsRow: { paddingHorizontal: spacing(2), marginBottom: spacing(1), flexGrow: 0 },
+  chipsRow: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: spacing(2), marginBottom: spacing(1), gap: spacing(1) },
   chip: {
     backgroundColor: colors.surface,
     borderRadius: 20,
     paddingHorizontal: spacing(2),
     paddingVertical: spacing(1),
-    marginRight: spacing(1),
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -204,7 +214,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: spacing(2),
     paddingVertical: spacing(1),
-    marginRight: spacing(1),
     borderWidth: 1,
     borderColor: colors.primary,
     borderStyle: "dashed",

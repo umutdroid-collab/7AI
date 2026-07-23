@@ -106,6 +106,7 @@ export async function fetchStock(params: {
   q?: string;
   expiring_within_days?: number;
   status?: StockItem["status"];
+  include_used?: boolean;
 }) {
   const { data } = await api.get<StockItem[]>("/stock", { params });
   return data;

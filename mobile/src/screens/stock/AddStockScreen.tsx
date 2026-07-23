@@ -5,6 +5,7 @@ import { createStockItem, fetchHospitals, fetchProducts } from "../../api/servic
 import { Hospital, Product } from "../../types";
 import { colors, spacing } from "../../theme";
 import { apiErrorMessage } from "../../api/client";
+import HospitalPickerModal from "../../components/HospitalPickerModal";
 
 export default function AddStockScreen({ navigation, route }: any) {
   const [products, setProducts] = useState<Product[]>([]);
@@ -13,6 +14,7 @@ export default function AddStockScreen({ navigation, route }: any) {
 
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState<number | null>(null);
+  const [isPickerVisible, setIsPickerVisible] = useState(false);
 
   const [lotNo, setLotNo] = useState("");
   const [serialNo, setSerialNo] = useState("");
@@ -129,23 +131,20 @@ export default function AddStockScreen({ navigation, route }: any) {
       />
 
       <Text style={styles.label}>Konum</Text>
-      <View style={styles.hospitalRow}>
-        <TouchableOpacity
-          style={[styles.chip, selectedHospitalId === null && styles.chipActive]}
-          onPress={() => setSelectedHospitalId(null)}
-        >
-          <Text style={[styles.chipText, selectedHospitalId === null && styles.chipTextActive]}>Depo</Text>
-        </TouchableOpacity>
-        {hospitals.map((h) => (
-          <TouchableOpacity
-            key={h.id}
-            style={[styles.chip, selectedHospitalId === h.id && styles.chipActive]}
-            onPress={() => setSelectedHospitalId(h.id)}
-          >
-            <Text style={[styles.chipText, selectedHospitalId === h.id && styles.chipTextActive]}>{h.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <TouchableOpacity style={styles.hospitalSelect} onPress={() => setIsPickerVisible(true)}>
+        <Text style={styles.hospitalSelectText}>
+          {selectedHospitalId ? hospitals.find((h) => h.id === selectedHospitalId)?.name : "Depo"}
+        </Text>
+        <Text style={styles.hospitalSelectChevron}>▾</Text>
+      </TouchableOpacity>
+
+      <HospitalPickerModal
+        visible={isPickerVisible}
+        hospitals={hospitals}
+        onSelect={setSelectedHospitalId}
+        onClose={() => setIsPickerVisible(false)}
+        extraOptions={[{ id: null, name: "Depo" }]}
+      />
 
       <TouchableOpacity style={styles.submit} onPress={handleSubmit} disabled={isSubmitting}>
         <Text style={styles.submitText}>Kaydet</Text>
@@ -198,18 +197,19 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
   },
   addProductButtonText: { color: colors.primary, fontWeight: "700", fontSize: 13 },
-  hospitalRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing(1) },
-  chip: {
+  hospitalSelect: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: colors.surface,
-    borderRadius: 20,
+    borderRadius: 10,
     paddingHorizontal: spacing(2),
-    paddingVertical: spacing(1),
+    paddingVertical: spacing(1.5),
     borderWidth: 1,
     borderColor: colors.border,
   },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
-  chipTextActive: { color: "#0f172a" },
+  hospitalSelectText: { color: colors.text, fontSize: 14, fontWeight: "600" },
+  hospitalSelectChevron: { color: colors.textMuted },
   submit: {
     backgroundColor: colors.primary,
     borderRadius: 10,

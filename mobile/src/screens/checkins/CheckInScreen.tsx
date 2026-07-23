@@ -18,6 +18,7 @@ import { colors, spacing } from "../../theme";
 import { apiErrorMessage, TOKEN_KEY } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import CheckInCard from "../../components/CheckInCard";
+import HospitalPickerModal from "../../components/HospitalPickerModal";
 
 type ViewMode = "mine" | "team";
 
@@ -25,6 +26,7 @@ export default function CheckInScreen() {
   const { user } = useAuth();
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState<number | null>(null);
+  const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -96,17 +98,19 @@ export default function CheckInScreen() {
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>Bugün nerede olduğunuzu bildirin</Text>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hospitalRow}>
-            {hospitals.map((h) => (
-              <TouchableOpacity
-                key={h.id}
-                style={[styles.chip, selectedHospitalId === h.id && styles.chipActive]}
-                onPress={() => setSelectedHospitalId(h.id)}
-              >
-                <Text style={[styles.chipText, selectedHospitalId === h.id && styles.chipTextActive]}>{h.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <TouchableOpacity style={styles.hospitalSelect} onPress={() => setIsPickerVisible(true)}>
+            <Text style={selectedHospitalId ? styles.hospitalSelectText : styles.hospitalSelectPlaceholder}>
+              {selectedHospitalId ? hospitals.find((h) => h.id === selectedHospitalId)?.name : "Hastane seçin..."}
+            </Text>
+            <Text style={styles.hospitalSelectChevron}>▾</Text>
+          </TouchableOpacity>
+
+          <HospitalPickerModal
+            visible={isPickerVisible}
+            hospitals={hospitals}
+            onSelect={setSelectedHospitalId}
+            onClose={() => setIsPickerVisible(false)}
+          />
 
           <TextInput
             style={styles.commentInput}
@@ -172,19 +176,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing(2),
   },
   formTitle: { color: colors.text, fontSize: 15, fontWeight: "700", marginBottom: spacing(1.5) },
-  hospitalRow: { flexGrow: 0, marginBottom: spacing(1.5) },
-  chip: {
+  hospitalSelect: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 20,
+    borderRadius: 10,
     paddingHorizontal: spacing(2),
-    paddingVertical: spacing(1),
-    marginRight: spacing(1),
+    paddingVertical: spacing(1.5),
     borderWidth: 1,
     borderColor: colors.border,
+    marginBottom: spacing(1.5),
   },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
-  chipTextActive: { color: "#0f172a" },
+  hospitalSelectText: { color: colors.text, fontSize: 14, fontWeight: "600" },
+  hospitalSelectPlaceholder: { color: colors.textMuted, fontSize: 14 },
+  hospitalSelectChevron: { color: colors.textMuted },
   commentInput: {
     backgroundColor: colors.surfaceAlt,
     borderRadius: 10,

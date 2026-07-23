@@ -23,7 +23,7 @@ export default function StockDetailScreen({ route, navigation }: any) {
   const load = useCallback(async () => {
     try {
       const [items, movements] = await Promise.all([
-        fetchStock({}),
+        fetchStock({ include_used: true }),
         fetchStockHistory(stockItemId),
       ]);
       const found = items.find((i) => i.id === stockItemId) ?? null;
@@ -77,19 +77,21 @@ export default function StockDetailScreen({ route, navigation }: any) {
         <InfoRow label="Durum" value={item.status} />
       </View>
 
-      {item.status !== "used" && (
-        <View style={styles.actionsRow}>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => navigation.navigate("TransferStock", { item })}
-          >
-            <Text style={styles.primaryButtonText}>Taşı / Hastane Değiştir</Text>
-          </TouchableOpacity>
+      <View style={styles.actionsRow}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => navigation.navigate("TransferStock", { item })}
+        >
+          <Text style={styles.primaryButtonText}>
+            {item.status === "used" ? "Kullanımı Geri Al (Hastaneye/Depoya Taşı)" : "Taşı / Hastane Değiştir"}
+          </Text>
+        </TouchableOpacity>
+        {item.status !== "used" && (
           <TouchableOpacity style={styles.secondaryButton} onPress={handleMarkUsed}>
             <Text style={styles.secondaryButtonText}>Kullanıldı Olarak İşaretle</Text>
           </TouchableOpacity>
-        </View>
-      )}
+        )}
+      </View>
 
       <Text style={styles.sectionTitle}>Hareket Geçmişi</Text>
       {history.length === 0 ? (

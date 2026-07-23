@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ from app.schemas import (
     StockMovementOut,
     StockTransferRequest,
 )
+from app.services.bulk_import import import_stock_csv
 
 router = APIRouter(prefix="/stock", tags=["stock"])
 settings = get_settings()
@@ -128,6 +129,22 @@ def create_stock_item(payload: StockItemCreate, db: Session = Depends(get_db), u
     return _with_expiry(item)
 
 
+@router.post("/bulk-upload")
+async def bulk_upload_stock(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """CSV sütunları: reference_no, lot_no, skt (zorunlu), serial_no, quantity,
+    hospital_name (opsiyonel; boşsa depo). reference_no daha önce eklenmiş bir
+    ürünle, hospital_name daha önce eklenmiş bir hastaneyle eşleşmelidir."""
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Sadece CSV dosyası yükleyebilirsiniz")
+    content = await file.read()
+    result = import_stock_csv(content, db, user)
+    return {"created": result.created, "skipped": result.skipped, "errors": result.errors}
+
+
 @router.post("/{stock_item_id}/transfer", response_model=StockItemOut)
 def transfer_stock_item(
     stock_item_id: int,
@@ -141,9 +158,8 @@ def transfer_stock_item(
     item = db.get(StockItem, stock_item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Stok kaydı bulunamadı")
-    if item.status == StockItemStatus.USED:
-        raise HTTPException(status_code=400, detail="Kullanılmış ürün taşınamaz")
 
+    was_used = item.status == StockItemStatus.USED
     from_hospital_id = item.hospital_id
 
     if payload.to_hospital_id is None:
@@ -156,6 +172,13 @@ def transfer_stock_item(
         movement_type = MovementType.TRANSFER
         item.status = StockItemStatus.AT_HOSPITAL
 
+    note = payload.note
+    if was_used:
+        # Yanlışlıkla "kullanıldı" işaretlenmiş bir ürünün geri alınması: gerçek bir
+        # fiziksel taşıma değil, durum düzeltmesi olarak kaydedilir.
+        movement_type = MovementType.ADJUSTMENT
+        note = note or "Kullanım işareti geri alındı"
+
     item.hospital_id = payload.to_hospital_id
     item.updated_at = datetime.utcnow()
 
@@ -165,7 +188,7 @@ def transfer_stock_item(
         from_hospital_id=from_hospital_id,
         to_hospital_id=payload.to_hospital_id,
         moved_by_user_id=user.id,
-        note=payload.note,
+        note=note,
     )
     db.add(movement)
     db.commit()

@@ -31,6 +31,15 @@ class Token(BaseModel):
     user: UserOut
 
 
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class UserActiveUpdate(BaseModel):
+    is_active: bool
+
+
 # --- Hospitals ---
 
 class HospitalCreate(BaseModel):

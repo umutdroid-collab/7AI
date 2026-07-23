@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useAuth } from "../context/AuthContext";
 import { colors } from "../theme";
-import HeaderLogoutButton from "../components/HeaderLogoutButton";
+import HeaderProfileButton from "../components/HeaderProfileButton";
 
 import LoginScreen from "../screens/auth/LoginScreen";
 import StockListScreen from "../screens/stock/StockListScreen";
@@ -17,6 +17,7 @@ import InvoiceDetailScreen from "../screens/invoices/InvoiceDetailScreen";
 import NotificationsScreen from "../screens/invoices/NotificationsScreen";
 import AssistantChatScreen from "../screens/assistant/AssistantChatScreen";
 import CheckInScreen from "../screens/checkins/CheckInScreen";
+import ProfileScreen from "../screens/profile/ProfileScreen";
 
 const StockStackNav = createNativeStackNavigator();
 const InvoiceStackNav = createNativeStackNavigator();
@@ -36,11 +37,12 @@ function StockStack() {
       <StockStackNav.Screen
         name="StockList"
         component={StockListScreen}
-        options={{ title: "Stok Takip", headerRight: () => <HeaderLogoutButton /> }}
+        options={({ navigation }) => ({ title: "Stok Takip", headerRight: () => <HeaderProfileButton navigation={navigation} /> })}
       />
       <StockStackNav.Screen name="StockDetail" component={StockDetailScreen} options={{ title: "Ürün Detayı" }} />
       <StockStackNav.Screen name="TransferStock" component={TransferStockScreen} options={{ title: "Taşı" }} />
       <StockStackNav.Screen name="AddStock" component={AddStockScreen} options={{ title: "Yeni Stok Kaydı" }} />
+      <StockStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
     </StockStackNav.Navigator>
   );
 }
@@ -51,10 +53,11 @@ function InvoiceStack() {
       <InvoiceStackNav.Screen
         name="InvoiceList"
         component={InvoiceListScreen}
-        options={{ title: "Fatura Takip", headerRight: () => <HeaderLogoutButton /> }}
+        options={({ navigation }) => ({ title: "Fatura Takip", headerRight: () => <HeaderProfileButton navigation={navigation} /> })}
       />
       <InvoiceStackNav.Screen name="InvoiceDetail" component={InvoiceDetailScreen} options={{ title: "Fatura Detayı" }} />
       <InvoiceStackNav.Screen name="Notifications" component={NotificationsScreen} options={{ title: "Bildirimler" }} />
+      <InvoiceStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
     </InvoiceStackNav.Navigator>
   );
 }
@@ -65,8 +68,9 @@ function AssistantStack() {
       <AssistantStackNav.Screen
         name="AssistantChat"
         component={AssistantChatScreen}
-        options={{ title: "Klinik Asistan", headerRight: () => <HeaderLogoutButton /> }}
+        options={({ navigation }) => ({ title: "Klinik Asistan", headerRight: () => <HeaderProfileButton navigation={navigation} /> })}
       />
+      <AssistantStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
     </AssistantStackNav.Navigator>
   );
 }
@@ -77,8 +81,9 @@ function CheckInStack() {
       <CheckInStackNav.Screen
         name="CheckIn"
         component={CheckInScreen}
-        options={{ title: "Çalışan Takip", headerRight: () => <HeaderLogoutButton /> }}
+        options={({ navigation }) => ({ title: "Çalışan Takip", headerRight: () => <HeaderProfileButton navigation={navigation} /> })}
       />
+      <CheckInStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
     </CheckInStackNav.Navigator>
   );
 }

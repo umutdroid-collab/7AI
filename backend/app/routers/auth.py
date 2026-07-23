@@ -6,7 +6,7 @@ from app.auth import create_access_token, hash_password, verify_password
 from app.database import get_db
 from app.deps import get_current_user, require_admin
 from app.models import User
-from app.schemas import Token, UserCreate, UserOut
+from app.schemas import PasswordChange, Token, UserActiveUpdate, UserCreate, UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -46,3 +46,37 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db), _: User = De
 @router.get("/users", response_model=list[UserOut])
 def list_users(db: Session = Depends(get_db), _: User = Depends(require_admin)):
     return db.query(User).order_by(User.full_name).all()
+
+
+@router.post("/change-password", response_model=UserOut)
+def change_password(
+    payload: PasswordChange,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if not verify_password(payload.current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Mevcut şifre hatalı")
+    if len(payload.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Yeni şifre en az 8 karakter olmalı")
+    user.hashed_password = hash_password(payload.new_password)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.patch("/users/{user_id}/active", response_model=UserOut)
+def set_user_active(
+    user_id: int,
+    payload: UserActiveUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    if user_id == admin.id and not payload.is_active:
+        raise HTTPException(status_code=400, detail="Kendi hesabınızı pasifleştiremezsiniz")
+    target = db.get(User, user_id)
+    if not target:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+    target.is_active = payload.is_active
+    db.commit()
+    db.refresh(target)
+    return target

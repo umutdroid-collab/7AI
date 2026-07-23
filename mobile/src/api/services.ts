@@ -36,6 +36,34 @@ export async function fetchMe() {
   return data;
 }
 
+export async function changePassword(currentPassword: string, newPassword: string) {
+  const { data } = await api.post<User>("/auth/change-password", {
+    current_password: currentPassword,
+    new_password: newPassword,
+  });
+  return data;
+}
+
+export async function fetchUsers() {
+  const { data } = await api.get<User[]>("/auth/users");
+  return data;
+}
+
+export async function createUser(payload: {
+  full_name: string;
+  email: string;
+  password: string;
+  role: "admin" | "employee";
+}) {
+  const { data } = await api.post<User>("/auth/users", payload);
+  return data;
+}
+
+export async function setUserActive(userId: number, isActive: boolean) {
+  const { data } = await api.patch<User>(`/auth/users/${userId}/active`, { is_active: isActive });
+  return data;
+}
+
 // --- Hospitals & products ---
 
 export async function fetchHospitals() {

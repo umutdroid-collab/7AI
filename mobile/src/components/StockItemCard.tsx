@@ -18,6 +18,12 @@ function expiryLabel(days: number | null): string {
   return `SKT: ${days} gün kaldı`;
 }
 
+function locationLabel(item: StockItem): string {
+  if (item.hospital) return item.hospital.name;
+  if (item.carried_by) return `🚗 ${item.carried_by.full_name} (araçta)`;
+  return "Depo";
+}
+
 export default function StockItemCard({ item, onPress }: { item: StockItem; onPress: () => void }) {
   const isUsed = item.status === "used";
 
@@ -49,15 +55,13 @@ export default function StockItemCard({ item, onPress }: { item: StockItem; onPr
 
       {isUsed ? (
         <>
-          <Text style={styles.location}>
-            🏥 Kullanıldığı hastane: {item.hospital ? item.hospital.name : "Depo"}
-          </Text>
+          <Text style={styles.location}>🏥 Kullanıldığı yer: {locationLabel(item)}</Text>
           <Text style={styles.meta}>
             Kullanım tarihi: {new Date(item.updated_at).toLocaleDateString("tr-TR")}
           </Text>
         </>
       ) : (
-        <Text style={styles.location}>📍 {item.hospital ? item.hospital.name : "Depo"}</Text>
+        <Text style={styles.location}>📍 {locationLabel(item)}</Text>
       )}
     </TouchableOpacity>
   );

@@ -149,7 +149,7 @@ export default function StockListScreen({ navigation }: any) {
         />
       )}
 
-      {viewMode === "active" && (
+      {viewMode === "active" && user?.role === "admin" && (
         <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("AddStock")}>
           <Text style={styles.fabText}>+</Text>
         </TouchableOpacity>

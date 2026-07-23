@@ -25,6 +25,7 @@ class UserRole(str, enum.Enum):
 class StockItemStatus(str, enum.Enum):
     IN_STOCK = "in_stock"       # depoda
     AT_HOSPITAL = "at_hospital"  # bir hastanede konsinye
+    IN_VEHICLE = "in_vehicle"    # bir çalışanın aracında/üzerinde
     USED = "used"                # hastada kullanıldı / tüketildi
     RETURNED = "returned"        # depoya iade edildi
     EXPIRED = "expired"
@@ -36,6 +37,7 @@ class MovementType(str, enum.Enum):
     RETURN = "return"        # hastaneden depoya iade
     USE = "use"              # hastanede kullanıldı
     ADJUSTMENT = "adjustment"  # manuel düzeltme
+    VEHICLE_PICKUP = "vehicle_pickup"  # bir çalışan aracına/üzerine aldı
 
 
 class InvoiceStatus(str, enum.Enum):
@@ -100,12 +102,14 @@ class StockItem(Base):
 
     status: Mapped[StockItemStatus] = mapped_column(Enum(StockItemStatus), default=StockItemStatus.IN_STOCK)
     hospital_id: Mapped[int | None] = mapped_column(ForeignKey("hospitals.id"), nullable=True)
+    carried_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     product: Mapped["Product"] = relationship(back_populates="stock_items")
     hospital: Mapped["Hospital | None"] = relationship(back_populates="stock_items")
+    carried_by: Mapped["User | None"] = relationship(foreign_keys=[carried_by_user_id])
     movements: Mapped[list["StockMovement"]] = relationship(
         back_populates="stock_item", order_by="StockMovement.moved_at", cascade="all, delete-orphan"
     )
@@ -119,6 +123,7 @@ class StockMovement(Base):
     movement_type: Mapped[MovementType] = mapped_column(Enum(MovementType))
     from_hospital_id: Mapped[int | None] = mapped_column(ForeignKey("hospitals.id"), nullable=True)
     to_hospital_id: Mapped[int | None] = mapped_column(ForeignKey("hospitals.id"), nullable=True)
+    to_vehicle_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     moved_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     moved_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)

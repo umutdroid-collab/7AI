@@ -37,6 +37,7 @@ def _with_expiry(item: StockItem) -> StockItemOut:
 @router.get("", response_model=list[StockItemOut])
 def list_stock(
     hospital_id: int | None = None,
+    carried_by_user_id: int | None = None,
     q: str | None = None,
     expiring_within_days: int | None = None,
     include_used: bool = False,
@@ -46,12 +47,15 @@ def list_stock(
 ):
     """Konsinye stok listesi. hospital_id verilmezse depodaki + tüm hastanelerdeki ürünler döner.
     q: ref no / ÜBB no / lot no / seri no üzerinde arama yapar (hangi hastanede ne var, karışıklığı çözer).
+    carried_by_user_id: bir çalışanın o an aracında/üzerinde taşıdığı ürünleri filtrelemek için.
     status: belirli bir durumu filtrelemek için (örn. "used" ile Kullanım sekmesi hangi hastanede
     kullanıldığını gösterir). Verilirse include_used göz ardı edilir.
     """
     query = db.query(StockItem).join(Product)
     if hospital_id is not None:
         query = query.filter(StockItem.hospital_id == hospital_id)
+    if carried_by_user_id is not None:
+        query = query.filter(StockItem.carried_by_user_id == carried_by_user_id)
     if status is not None:
         query = query.filter(StockItem.status == status)
     elif not include_used:
@@ -97,7 +101,7 @@ def get_stock_history(stock_item_id: int, db: Session = Depends(get_db), _: User
 
 
 @router.post("", response_model=StockItemOut)
-def create_stock_item(payload: StockItemCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def create_stock_item(payload: StockItemCreate, db: Session = Depends(get_db), user: User = Depends(require_admin)):
     product = db.get(Product, payload.product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
@@ -152,8 +156,9 @@ def transfer_stock_item(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Bir ürünü mevcut hastaneden başka bir hastaneye taşır ya da depoya iade eder.
-    Bu, çalışanların hangi ürünün hangi hastanede olduğunu güncel tutmasını sağlayan tek yoldur.
+    """Bir ürünü mevcut hastaneden başka bir hastaneye taşır, bir çalışanın aracına
+    aldırır ya da depoya iade eder. Bu, çalışanların hangi ürünün hangi hastanede /
+    kimin aracında olduğunu güncel tutmasını sağlayan tek yoldur.
     """
     item = db.get(StockItem, stock_item_id)
     if not item:
@@ -161,16 +166,29 @@ def transfer_stock_item(
 
     was_used = item.status == StockItemStatus.USED
     from_hospital_id = item.hospital_id
+    to_vehicle_user_id: int | None = None
 
-    if payload.to_hospital_id is None:
+    if payload.to_vehicle:
+        movement_type = MovementType.VEHICLE_PICKUP
+        item.status = StockItemStatus.IN_VEHICLE
+        item.hospital_id = None
+        item.carried_by_user_id = user.id
+        to_vehicle_user_id = user.id
+    elif payload.to_hospital_id is None:
         movement_type = MovementType.RETURN
         item.status = StockItemStatus.IN_STOCK
+        item.hospital_id = None
+        item.carried_by_user_id = None
     elif from_hospital_id is None:
         movement_type = MovementType.DISPATCH
         item.status = StockItemStatus.AT_HOSPITAL
+        item.hospital_id = payload.to_hospital_id
+        item.carried_by_user_id = None
     else:
         movement_type = MovementType.TRANSFER
         item.status = StockItemStatus.AT_HOSPITAL
+        item.hospital_id = payload.to_hospital_id
+        item.carried_by_user_id = None
 
     note = payload.note
     if was_used:
@@ -179,14 +197,14 @@ def transfer_stock_item(
         movement_type = MovementType.ADJUSTMENT
         note = note or "Kullanım işareti geri alındı"
 
-    item.hospital_id = payload.to_hospital_id
     item.updated_at = datetime.utcnow()
 
     movement = StockMovement(
         stock_item_id=item.id,
         movement_type=movement_type,
         from_hospital_id=from_hospital_id,
-        to_hospital_id=payload.to_hospital_id,
+        to_hospital_id=item.hospital_id,
+        to_vehicle_user_id=to_vehicle_user_id,
         moved_by_user_id=user.id,
         note=note,
     )

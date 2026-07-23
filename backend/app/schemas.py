@@ -95,6 +95,7 @@ class StockItemOut(BaseModel):
     quantity: int
     status: StockItemStatus
     hospital: HospitalOut | None
+    carried_by: UserOut | None
     created_at: datetime
     updated_at: datetime
     days_to_expiry: int | None = None
@@ -104,7 +105,8 @@ class StockItemOut(BaseModel):
 
 
 class StockTransferRequest(BaseModel):
-    to_hospital_id: int | None = None  # None = depoya iade
+    to_hospital_id: int | None = None  # None = depoya iade (to_vehicle false ise)
+    to_vehicle: bool = False  # true ise ürünü işlemi yapan çalışanın aracına alır
     note: str | None = None
 
 
@@ -113,6 +115,7 @@ class StockMovementOut(BaseModel):
     movement_type: MovementType
     from_hospital_id: int | None
     to_hospital_id: int | None
+    to_vehicle_user_id: int | None
     moved_by_user_id: int | None
     moved_at: datetime
     note: str | None

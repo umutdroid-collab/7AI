@@ -27,7 +27,7 @@ export interface Product {
   notes: string | null;
 }
 
-export type StockItemStatus = "in_stock" | "at_hospital" | "used" | "returned" | "expired";
+export type StockItemStatus = "in_stock" | "at_hospital" | "in_vehicle" | "used" | "returned" | "expired";
 
 export interface StockItem {
   id: number;
@@ -38,18 +38,20 @@ export interface StockItem {
   quantity: number;
   status: StockItemStatus;
   hospital: Hospital | null;
+  carried_by: User | null;
   created_at: string;
   updated_at: string;
   days_to_expiry: number | null;
 }
 
-export type MovementType = "dispatch" | "transfer" | "return" | "use" | "adjustment";
+export type MovementType = "dispatch" | "transfer" | "return" | "use" | "adjustment" | "vehicle_pickup";
 
 export interface StockMovement {
   id: number;
   movement_type: MovementType;
   from_hospital_id: number | null;
   to_hospital_id: number | null;
+  to_vehicle_user_id: number | null;
   moved_by_user_id: number | null;
   moved_at: string;
   note: string | null;

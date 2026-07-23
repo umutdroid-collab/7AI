@@ -74,6 +74,36 @@ def import_hospitals_csv(csv_bytes: bytes, db: Session) -> ImportResult:
     return result
 
 
+def import_products_csv(csv_bytes: bytes, db: Session) -> ImportResult:
+    result = ImportResult()
+    rows = _read_rows(csv_bytes)
+    existing_refs = {p.reference_no.strip().lower() for p in db.query(Product).all()}
+
+    for idx, row in enumerate(rows, start=2):
+        name = row.get("name", "")
+        reference_no = row.get("reference_no", "")
+        if not name or not reference_no:
+            result.errors.append({"row": idx, "message": "name ve reference_no zorunludur"})
+            continue
+        if reference_no.strip().lower() in existing_refs:
+            result.skipped += 1
+            continue
+        product = Product(
+            name=name,
+            reference_no=reference_no,
+            ubb_no=row.get("ubb_no") or None,
+            manufacturer=row.get("manufacturer") or None,
+            unit=row.get("unit") or None,
+            notes=row.get("notes") or None,
+        )
+        db.add(product)
+        existing_refs.add(reference_no.strip().lower())
+        result.created += 1
+
+    db.commit()
+    return result
+
+
 def import_stock_csv(csv_bytes: bytes, db: Session, user: User) -> ImportResult:
     result = ImportResult()
     rows = _read_rows(csv_bytes)

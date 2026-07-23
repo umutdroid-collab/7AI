@@ -56,34 +56,50 @@ Bilinen platform farkları:
 
 Her ürün; **ref numarası**, **ÜBB numarası**, **lot numarası**, **seri
 numarası** ve **SKT** ile tek tek izlenir (`StockItem`). Bir ürün bir
-hastaneye gönderildiğinde, başka bir hastaneye taşındığında veya depoya
-iade edildiğinde `POST /stock/{id}/transfer` çağrılır ve bu hareket
-`StockMovement` tablosuna geçmiş olarak yazılır — böylece "hangi üründen
-hangi hastanede ne var" sorusu her zaman güncel ve geriye dönük
+hastaneye gönderildiğinde, başka bir hastaneye taşındığında, bir
+çalışanın aracına alındığında veya depoya iade edildiğinde
+`POST /stock/{id}/transfer` çağrılır ve bu hareket `StockMovement`
+tablosuna geçmiş olarak yazılır — böylece "hangi üründen hangi
+hastanede/kimin aracında ne var" sorusu her zaman güncel ve geriye dönük
 izlenebilir olur. Çalışanlar ref/ÜBB/lot/seri numarasıyla arama yapıp bir
-ürünün o an hangi hastanede olduğunu bulabilir. SKT'si yaklaşan/geçen
-ürünler için otomatik bildirim üretilir (`SKT_WARNING_DAYS`).
+ürünün o an nerede olduğunu bulabilir. SKT'si yaklaşan/geçen ürünler için
+otomatik bildirim üretilir (`SKT_WARNING_DAYS`).
 
-### Toplu hastane/stok girişi (Excel/CSV)
+### Yetkiler: admin veri girer, çalışan sahada günceller
 
-Onlarca/yüzlerce hastane veya stok kalemini telefondan tek tek eklemek
-yerine, admin bilgisayarında bir tablo hazırlayıp CSV olarak yükleyebilir
-(virgül veya noktalı virgülle ayrılmış her iki format da desteklenir):
+- **Sadece admin**: hastane/ürün kartı açma, yeni stok kaydı (lot/seri)
+  oluşturma, toplu içe aktarma, fatura yükleme.
+- **Tüm çalışanlar**: mevcut bir stok kaydını hastaneler arasında ya da
+  kendi aracına/aracından taşıma (`POST /stock/{id}/transfer`,
+  `to_vehicle: true` ile "arabama al"), kullanıldı olarak işaretleme ve
+  gerekirse bu işareti geri alma.
+
+### Toplu hastane/ürün/stok/fatura girişi (Excel/CSV, tek seferde)
+
+Onlarca/yüzlerce kaydı telefondan tek tek eklemek yerine, admin
+bilgisayarında bir tablo hazırlayıp CSV olarak (`/docs` üzerinden,
+Excel'den "CSV olarak kaydet" → "Try it out" ile dosya seçerek)
+yükleyebilir (virgül veya noktalı virgülle ayrılmış her iki format da
+desteklenir):
 
 - **`POST /hospitals/bulk-upload`** — sütunlar: `name` (zorunlu), `city`,
   `address`, `contact_person`, `contact_phone`. Aynı isimde hastane
   varsa o satır sessizce atlanır.
+- **`POST /products/bulk-upload`** — sütunlar: `name`, `reference_no`
+  (zorunlu), `ubb_no`, `manufacturer`, `unit`, `notes`. Aynı ref no'ya
+  sahip ürün varsa o satır atlanır.
 - **`POST /stock/bulk-upload`** — sütunlar: `reference_no`, `lot_no`,
   `skt` (zorunlu; `2026-12-31` veya `31.12.2026` formatında), `serial_no`,
   `quantity`, `hospital_name` (opsiyonel; boşsa depo). `reference_no` daha
   önce eklenmiş bir ürünle, `hospital_name` daha önce eklenmiş bir
   hastaneyle eşleşmelidir — önce ürünleri/hastaneleri ekleyin.
+- **`POST /invoices/bulk-upload`** — CSV değil, birden fazla PDF dosyasını
+  aynı anda seçip (`files` alanına) yükler; her biri ayrı ayrı okunur.
 
-Her iki uç nokta da `{"created": N, "skipped": N, "errors": [...]}`
-döner; `errors` listesi hangi satırda ne sorun olduğunu satır numarasıyla
-gösterir. Şu an için bu yükleme `/docs` üzerinden (Excel'den "CSV olarak
-kaydet" yapıp "Try it out" ile dosya seçerek) yapılır; mobil uygulamada
-henüz bir yükleme ekranı yok.
+Hepsi `{"created": N, "skipped": N, "errors": [...]}` benzeri bir özet
+döner; `errors` listesi hangi satırda/dosyada ne sorun olduğunu gösterir.
+Mobil uygulamada henüz bu toplu yüklemeler için bir ekran yok — sadece
+tek tek yükleme (fatura/klinik çalışma PDF'i, hastane/ürün) mobilde var.
 
 ## 2) Fatura Takip
 

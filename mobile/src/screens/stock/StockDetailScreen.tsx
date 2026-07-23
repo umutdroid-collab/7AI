@@ -12,7 +12,14 @@ const MOVEMENT_LABELS: Record<string, string> = {
   return: "Depoya iade",
   use: "Hastada kullanıldı",
   adjustment: "Manuel düzeltme",
+  vehicle_pickup: "Araca alındı",
 };
+
+function locationLabel(item: StockItem): string {
+  if (item.hospital) return item.hospital.name;
+  if (item.carried_by) return `🚗 ${item.carried_by.full_name} (araçta)`;
+  return "Depo";
+}
 
 export default function StockDetailScreen({ route, navigation }: any) {
   const { stockItemId } = route.params;
@@ -73,7 +80,7 @@ export default function StockDetailScreen({ route, navigation }: any) {
         <InfoRow label="Seri numarası" value={item.serial_no || "-"} />
         <InfoRow label="SKT" value={item.skt} />
         <InfoRow label="Miktar" value={String(item.quantity)} />
-        <InfoRow label="Mevcut konum" value={item.hospital ? item.hospital.name : "Depo"} />
+        <InfoRow label="Mevcut konum" value={locationLabel(item)} />
         <InfoRow label="Durum" value={item.status} />
       </View>
 

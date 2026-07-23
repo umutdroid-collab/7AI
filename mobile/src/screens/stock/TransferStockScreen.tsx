@@ -6,10 +6,12 @@ import { colors, spacing } from "../../theme";
 import { apiErrorMessage } from "../../api/client";
 import HospitalPickerModal from "../../components/HospitalPickerModal";
 
+type Destination = number | "depot" | "vehicle" | undefined;
+
 export default function TransferStockScreen({ route, navigation }: any) {
   const { item } = route.params;
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null | undefined>(undefined);
+  const [destination, setDestination] = useState<Destination>(undefined);
   const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,13 +23,19 @@ export default function TransferStockScreen({ route, navigation }: any) {
   const selectableHospitals = hospitals.filter((h) => h.id !== item.hospital?.id);
 
   async function handleConfirm() {
-    if (selectedId === undefined) {
+    if (destination === undefined) {
       Alert.alert("Hedef seçin", "Ürünü nereye taşıyacağınızı seçin");
       return;
     }
     setIsSubmitting(true);
     try {
-      await transferStockItem(item.id, selectedId, note || undefined);
+      if (destination === "vehicle") {
+        await transferStockItem(item.id, null, note || undefined, true);
+      } else if (destination === "depot") {
+        await transferStockItem(item.id, null, note || undefined, false);
+      } else {
+        await transferStockItem(item.id, destination, note || undefined, false);
+      }
       Alert.alert("Başarılı", "Ürün taşındı", [{ text: "Tamam", onPress: () => navigation.goBack() }]);
     } catch (e) {
       Alert.alert("Hata", apiErrorMessage(e));
@@ -36,21 +44,47 @@ export default function TransferStockScreen({ route, navigation }: any) {
     }
   }
 
+  const destinationLabel =
+    destination === undefined
+      ? "Hedef seçin..."
+      : destination === "depot"
+      ? "Depo (iade)"
+      : destination === "vehicle"
+      ? "🚗 Arabama Al"
+      : hospitals.find((h) => h.id === destination)?.name;
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{item.product.name}</Text>
       <Text style={styles.subtitle}>
-        Şu an: {item.hospital ? item.hospital.name : "Depo"} — Lot {item.lot_no}
+        Şu an: {item.hospital ? item.hospital.name : item.carried_by ? `${item.carried_by.full_name} (araçta)` : "Depo"} — Lot{" "}
+        {item.lot_no}
       </Text>
 
-      <Text style={styles.label}>Hedef konum</Text>
+      <Text style={styles.label}>Hızlı seçim</Text>
+      <View style={styles.quickRow}>
+        <TouchableOpacity
+          style={[styles.quickChip, destination === "vehicle" && styles.quickChipActive]}
+          onPress={() => setDestination("vehicle")}
+        >
+          <Text style={[styles.quickChipText, destination === "vehicle" && styles.quickChipTextActive]}>
+            🚗 Arabama Al
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.quickChip, destination === "depot" && styles.quickChipActive]}
+          onPress={() => setDestination("depot")}
+        >
+          <Text style={[styles.quickChipText, destination === "depot" && styles.quickChipTextActive]}>
+            Depoya İade
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.label}>veya bir hastane seçin</Text>
       <TouchableOpacity style={styles.hospitalSelect} onPress={() => setIsPickerVisible(true)}>
-        <Text style={selectedId === undefined ? styles.hospitalSelectPlaceholder : styles.hospitalSelectText}>
-          {selectedId === undefined
-            ? "Hedef seçin..."
-            : selectedId === null
-            ? "Depo (iade)"
-            : hospitals.find((h) => h.id === selectedId)?.name}
+        <Text style={typeof destination === "number" ? styles.hospitalSelectText : styles.hospitalSelectPlaceholder}>
+          {typeof destination === "number" ? destinationLabel : "Hastane Seç..."}
         </Text>
         <Text style={styles.hospitalSelectChevron}>▾</Text>
       </TouchableOpacity>
@@ -58,10 +92,9 @@ export default function TransferStockScreen({ route, navigation }: any) {
       <HospitalPickerModal
         visible={isPickerVisible}
         hospitals={selectableHospitals}
-        onSelect={setSelectedId}
+        onSelect={(id) => setDestination(id === null ? "depot" : id)}
         onClose={() => setIsPickerVisible(false)}
-        extraOptions={[{ id: null, name: "Depo (iade)" }]}
-        title="Hedef Konum Seç"
+        title="Hedef Hastane Seç"
       />
 
       <Text style={styles.label}>Not (opsiyonel)</Text>
@@ -78,7 +111,9 @@ export default function TransferStockScreen({ route, navigation }: any) {
         onPress={handleConfirm}
         disabled={isSubmitting}
       >
-        <Text style={styles.confirmButtonText}>Taşımayı Onayla</Text>
+        <Text style={styles.confirmButtonText}>
+          {destination === undefined ? "Taşımayı Onayla" : `Onayla: ${destinationLabel}`}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -89,6 +124,19 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 18, fontWeight: "700" },
   subtitle: { color: colors.textMuted, marginTop: 4, marginBottom: spacing(2) },
   label: { color: colors.textMuted, fontSize: 13, marginBottom: spacing(1), marginTop: spacing(1) },
+  quickRow: { flexDirection: "row", gap: spacing(1) },
+  quickChip: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    paddingVertical: spacing(1.5),
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  quickChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  quickChipText: { color: colors.text, fontWeight: "600", fontSize: 13 },
+  quickChipTextActive: { color: "#0f172a" },
   hospitalSelect: {
     flexDirection: "row",
     justifyContent: "space-between",

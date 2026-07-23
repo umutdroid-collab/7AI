@@ -103,6 +103,7 @@ export async function createProduct(payload: {
 
 export async function fetchStock(params: {
   hospital_id?: number;
+  carried_by_user_id?: number;
   q?: string;
   expiring_within_days?: number;
   status?: StockItem["status"];
@@ -117,9 +118,15 @@ export async function fetchStockHistory(stockItemId: number) {
   return data;
 }
 
-export async function transferStockItem(stockItemId: number, toHospitalId: number | null, note?: string) {
+export async function transferStockItem(
+  stockItemId: number,
+  toHospitalId: number | null,
+  note?: string,
+  toVehicle?: boolean
+) {
   const { data } = await api.post<StockItem>(`/stock/${stockItemId}/transfer`, {
     to_hospital_id: toHospitalId,
+    to_vehicle: !!toVehicle,
     note,
   });
   return data;

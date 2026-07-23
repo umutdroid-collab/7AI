@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -6,6 +6,7 @@ from app.database import get_db
 from app.deps import get_current_user, require_admin
 from app.models import Product, User
 from app.schemas import ProductCreate, ProductOut
+from app.services.bulk_import import import_products_csv
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -28,6 +29,21 @@ def create_product(payload: ProductCreate, db: Session = Depends(get_db), _: Use
     db.commit()
     db.refresh(product)
     return product
+
+
+@router.post("/bulk-upload")
+async def bulk_upload_products(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """CSV sütunları: name, reference_no (zorunlu), ubb_no, manufacturer, unit, notes.
+    Aynı ref no'ya sahip ürün zaten varsa o satır atlanır."""
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Sadece CSV dosyası yükleyebilirsiniz")
+    content = await file.read()
+    result = import_products_csv(content, db)
+    return {"created": result.created, "skipped": result.skipped, "errors": result.errors}
 
 
 @router.put("/{product_id}", response_model=ProductOut)

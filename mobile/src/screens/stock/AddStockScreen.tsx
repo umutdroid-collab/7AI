@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { createStockItem, fetchHospitals, fetchProducts } from "../../api/services";
 import { Hospital, Product } from "../../types";
 import { colors, spacing } from "../../theme";
 import { apiErrorMessage } from "../../api/client";
 
-export default function AddStockScreen({ navigation }: any) {
+export default function AddStockScreen({ navigation, route }: any) {
   const [products, setProducts] = useState<Product[]>([]);
   const [productQuery, setProductQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -19,9 +20,17 @@ export default function AddStockScreen({ navigation }: any) {
   const [quantity, setQuantity] = useState("1");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchHospitals().then(setHospitals).catch(() => {});
+    }, [])
+  );
+
   useEffect(() => {
-    fetchHospitals().then(setHospitals).catch(() => {});
-  }, []);
+    if (route.params?.newProduct) {
+      setSelectedProduct(route.params.newProduct);
+    }
+  }, [route.params?.newProduct]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -89,6 +98,9 @@ export default function AddStockScreen({ navigation }: any) {
               </TouchableOpacity>
             )}
           />
+          <TouchableOpacity style={styles.addProductButton} onPress={() => navigation.navigate("AddProduct")}>
+            <Text style={styles.addProductButtonText}>+ Yeni Ürün Ekle</Text>
+          </TouchableOpacity>
         </>
       )}
 
@@ -176,6 +188,16 @@ const styles = StyleSheet.create({
   },
   productOptionText: { color: colors.text, fontWeight: "600" },
   productOptionMeta: { color: colors.textMuted, fontSize: 12 },
+  addProductButton: {
+    borderRadius: 10,
+    paddingVertical: spacing(1.5),
+    alignItems: "center",
+    marginTop: spacing(1),
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: "dashed",
+  },
+  addProductButtonText: { color: colors.primary, fontWeight: "700", fontSize: 13 },
   hospitalRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing(1) },
   chip: {
     backgroundColor: colors.surface,

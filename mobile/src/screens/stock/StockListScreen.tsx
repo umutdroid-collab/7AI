@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -16,10 +16,12 @@ import { Hospital, StockItem } from "../../types";
 import { colors, spacing } from "../../theme";
 import StockItemCard from "../../components/StockItemCard";
 import { apiErrorMessage } from "../../api/client";
+import { useAuth } from "../../context/AuthContext";
 
 type ViewMode = "active" | "used";
 
 export default function StockListScreen({ navigation }: any) {
+  const { user } = useAuth();
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState<number | "all" | "warehouse">("all");
   const [query, setQuery] = useState("");
@@ -28,9 +30,11 @@ export default function StockListScreen({ navigation }: any) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchHospitals().then(setHospitals).catch(() => {});
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchHospitals().then(setHospitals).catch(() => {});
+    }, [])
+  );
 
   const load = useCallback(async () => {
     setError(null);
@@ -106,6 +110,11 @@ export default function StockListScreen({ navigation }: any) {
             onPress={() => setSelectedHospitalId(h.id)}
           />
         ))}
+        {user?.role === "admin" && (
+          <TouchableOpacity style={styles.addHospitalChip} onPress={() => navigation.navigate("AddHospital")}>
+            <Text style={styles.addHospitalChipText}>+ Hastane Ekle</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {isLoading ? (
@@ -191,6 +200,16 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
   chipTextActive: { color: "#0f172a" },
+  addHospitalChip: {
+    borderRadius: 20,
+    paddingHorizontal: spacing(2),
+    paddingVertical: spacing(1),
+    marginRight: spacing(1),
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: "dashed",
+  },
+  addHospitalChipText: { color: colors.primary, fontSize: 13, fontWeight: "700" },
   error: { color: colors.danger, textAlign: "center", marginTop: spacing(4) },
   empty: { color: colors.textMuted, textAlign: "center", marginTop: spacing(4) },
   fab: {

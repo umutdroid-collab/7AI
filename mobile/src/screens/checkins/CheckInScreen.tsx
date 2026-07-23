@@ -35,9 +35,14 @@ export default function CheckInScreen() {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchHospitals().then(setHospitals).catch(() => {});
     SecureStore.getItemAsync(TOKEN_KEY).then(setToken);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchHospitals().then(setHospitals).catch(() => {});
+    }, [])
+  );
 
   const load = useCallback(async () => {
     setError(null);

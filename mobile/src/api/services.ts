@@ -71,8 +71,31 @@ export async function fetchHospitals() {
   return data;
 }
 
+export async function createHospital(payload: {
+  name: string;
+  city?: string;
+  address?: string;
+  contact_person?: string;
+  contact_phone?: string;
+}) {
+  const { data } = await api.post<Hospital>("/hospitals", payload);
+  return data;
+}
+
 export async function fetchProducts(q?: string) {
   const { data } = await api.get<Product[]>("/products", { params: { q } });
+  return data;
+}
+
+export async function createProduct(payload: {
+  name: string;
+  reference_no: string;
+  ubb_no?: string;
+  manufacturer?: string;
+  unit?: string;
+  notes?: string;
+}) {
+  const { data } = await api.post<Product>("/products", payload);
   return data;
 }
 

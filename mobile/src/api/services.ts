@@ -95,6 +95,24 @@ export async function createHospital(payload: {
   return data;
 }
 
+export async function updateHospital(
+  id: number,
+  payload: {
+    name: string;
+    city?: string;
+    address?: string;
+    contact_person?: string;
+    contact_phone?: string;
+  }
+) {
+  const { data } = await api.put<Hospital>(`/hospitals/${id}`, payload);
+  return data;
+}
+
+export async function deleteHospital(id: number) {
+  await api.delete(`/hospitals/${id}`);
+}
+
 export async function fetchProducts(q?: string) {
   const { data } = await api.get<Product[]>("/products", { params: { q } });
   return data;

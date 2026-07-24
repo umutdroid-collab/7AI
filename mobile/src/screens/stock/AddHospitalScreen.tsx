@@ -1,17 +1,24 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity } from "react-native";
 import Alert from "../../utils/alert";
-import { createHospital } from "../../api/services";
+import { createHospital, updateHospital } from "../../api/services";
 import { apiErrorMessage } from "../../api/client";
 import { colors, spacing } from "../../theme";
+import { Hospital } from "../../types";
 
-export default function AddHospitalScreen({ navigation }: any) {
-  const [name, setName] = useState("");
-  const [city, setCity] = useState("");
-  const [address, setAddress] = useState("");
-  const [contactPerson, setContactPerson] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
+export default function AddHospitalScreen({ navigation, route }: any) {
+  const editingHospital: Hospital | undefined = route.params?.hospital;
+
+  const [name, setName] = useState(editingHospital?.name ?? "");
+  const [city, setCity] = useState(editingHospital?.city ?? "");
+  const [address, setAddress] = useState(editingHospital?.address ?? "");
+  const [contactPerson, setContactPerson] = useState(editingHospital?.contact_person ?? "");
+  const [contactPhone, setContactPhone] = useState(editingHospital?.contact_phone ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    navigation.setOptions({ title: editingHospital ? "Hastaneyi Düzenle" : "Yeni Hastane" });
+  }, [navigation, editingHospital]);
 
   async function handleSubmit() {
     if (!name.trim()) {
@@ -20,14 +27,20 @@ export default function AddHospitalScreen({ navigation }: any) {
     }
     setIsSubmitting(true);
     try {
-      await createHospital({
+      const payload = {
         name: name.trim(),
         city: city || undefined,
         address: address || undefined,
         contact_person: contactPerson || undefined,
         contact_phone: contactPhone || undefined,
-      });
-      Alert.alert("Başarılı", "Hastane eklendi", [{ text: "Tamam", onPress: () => navigation.goBack() }]);
+      };
+      if (editingHospital) {
+        await updateHospital(editingHospital.id, payload);
+        Alert.alert("Başarılı", "Hastane güncellendi", [{ text: "Tamam", onPress: () => navigation.goBack() }]);
+      } else {
+        await createHospital(payload);
+        Alert.alert("Başarılı", "Hastane eklendi", [{ text: "Tamam", onPress: () => navigation.goBack() }]);
+      }
     } catch (e) {
       Alert.alert("Hata", apiErrorMessage(e));
     } finally {
@@ -64,7 +77,11 @@ export default function AddHospitalScreen({ navigation }: any) {
       />
 
       <TouchableOpacity style={styles.submit} onPress={handleSubmit} disabled={isSubmitting}>
-        {isSubmitting ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.submitText}>Kaydet</Text>}
+        {isSubmitting ? (
+          <ActivityIndicator color="#0f172a" />
+        ) : (
+          <Text style={styles.submitText}>{editingHospital ? "Güncelle" : "Kaydet"}</Text>
+        )}
       </TouchableOpacity>
     </ScrollView>
   );

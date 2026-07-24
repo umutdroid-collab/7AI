@@ -15,6 +15,7 @@ import AddStockScreen from "../screens/stock/AddStockScreen";
 import AddHospitalScreen from "../screens/stock/AddHospitalScreen";
 import HospitalListScreen from "../screens/stock/HospitalListScreen";
 import AddProductScreen from "../screens/stock/AddProductScreen";
+import ProductListScreen from "../screens/stock/ProductListScreen";
 import InvoiceListScreen from "../screens/invoices/InvoiceListScreen";
 import InvoiceDetailScreen from "../screens/invoices/InvoiceDetailScreen";
 import NotificationsScreen from "../screens/invoices/NotificationsScreen";
@@ -52,6 +53,7 @@ function StockStack() {
       <StockStackNav.Screen name="AddHospital" component={AddHospitalScreen} options={{ title: "Yeni Hastane" }} />
       <StockStackNav.Screen name="HospitalList" component={HospitalListScreen} options={{ title: "Hastaneler" }} />
       <StockStackNav.Screen name="AddProduct" component={AddProductScreen} options={{ title: "Yeni Ürün" }} />
+      <StockStackNav.Screen name="ProductList" component={ProductListScreen} options={{ title: "Ürünler" }} />
       <StockStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
       <StockStackNav.Screen name="BulkUpload" component={BulkUploadScreen} options={{ title: "Toplu Ekleme" }} />
     </StockStackNav.Navigator>

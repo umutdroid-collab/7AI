@@ -63,6 +63,7 @@ class ProductCreate(BaseModel):
     name: str
     reference_no: str
     ubb_no: str | None = None
+    sut_kodu: str | None = None
     manufacturer: str | None = None
     unit: str | None = None
     notes: str | None = None
@@ -73,6 +74,10 @@ class ProductOut(ProductCreate):
 
     class Config:
         from_attributes = True
+
+
+class ProductBulkDelete(BaseModel):
+    ids: list[int]
 
 
 # --- Stock items ---

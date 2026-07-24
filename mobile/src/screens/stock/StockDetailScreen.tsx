@@ -77,6 +77,7 @@ export default function StockDetailScreen({ route, navigation }: any) {
       <View style={styles.infoBox}>
         <InfoRow label="Ref numarası" value={item.product.reference_no} />
         <InfoRow label="ÜBB numarası" value={item.product.ubb_no || "-"} />
+        <InfoRow label="SUT kodu" value={item.product.sut_kodu || "-"} />
         <InfoRow label="Lot numarası" value={item.lot_no} />
         <InfoRow label="Seri numarası" value={item.serial_no || "-"} />
         <InfoRow label="SKT" value={item.skt} />

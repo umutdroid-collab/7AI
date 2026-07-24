@@ -101,11 +101,17 @@ export default function AddStockScreen({ navigation, route }: any) {
             renderItem={({ item }) => (
               <TouchableOpacity style={styles.productOption} onPress={() => setSelectedProduct(item)}>
                 <Text style={styles.productOptionText}>{item.name}</Text>
-                <Text style={styles.productOptionMeta}>{item.reference_no}</Text>
+                <Text style={styles.productOptionMeta}>
+                  {item.reference_no}
+                  {item.sut_kodu ? `  •  SUT: ${item.sut_kodu}` : ""}
+                </Text>
               </TouchableOpacity>
             )}
           />
-          <TouchableOpacity style={styles.addProductButton} onPress={() => navigation.navigate("AddProduct")}>
+          <TouchableOpacity
+            style={styles.addProductButton}
+            onPress={() => navigation.navigate("AddProduct", { fromAddStock: true })}
+          >
             <Text style={styles.addProductButtonText}>+ Yeni Ürün Ekle</Text>
           </TouchableOpacity>
         </>

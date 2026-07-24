@@ -92,6 +92,7 @@ def import_products_csv(csv_bytes: bytes, db: Session) -> ImportResult:
             name=name,
             reference_no=reference_no,
             ubb_no=row.get("ubb_no") or None,
+            sut_kodu=row.get("sut_kodu") or None,
             manufacturer=row.get("manufacturer") or None,
             unit=row.get("unit") or None,
             notes=row.get("notes") or None,

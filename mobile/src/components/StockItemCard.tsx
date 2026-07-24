@@ -47,6 +47,7 @@ export default function StockItemCard({ item, onPress }: { item: StockItem; onPr
       <Text style={styles.meta}>
         Ref: {item.product.reference_no}
         {item.product.ubb_no ? `  •  ÜBB: ${item.product.ubb_no}` : ""}
+        {item.product.sut_kodu ? `  •  SUT: ${item.product.sut_kodu}` : ""}
       </Text>
       <Text style={styles.meta}>
         Lot: {item.lot_no}

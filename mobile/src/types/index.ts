@@ -22,6 +22,7 @@ export interface Product {
   name: string;
   reference_no: string;
   ubb_no: string | null;
+  sut_kodu: string | null;
   manufacturer: string | null;
   unit: string | null;
   notes: string | null;

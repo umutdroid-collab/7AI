@@ -105,7 +105,10 @@ export default function AddSalesTargetScreen({ navigation }: any) {
               {products.slice(0, 6).map((p) => (
                 <TouchableOpacity key={p.id} style={styles.option} onPress={() => setSelectedProduct(p)}>
                   <Text style={styles.optionText}>{p.name}</Text>
-                  <Text style={styles.optionMeta}>{p.reference_no}</Text>
+                  <Text style={styles.optionMeta}>
+                    {p.reference_no}
+                    {p.sut_kodu ? `  •  SUT: ${p.sut_kodu}` : ""}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </>

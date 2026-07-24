@@ -118,15 +118,35 @@ export async function fetchProducts(q?: string) {
   return data;
 }
 
-export async function createProduct(payload: {
+interface ProductPayload {
   name: string;
   reference_no: string;
   ubb_no?: string;
+  sut_kodu?: string;
   manufacturer?: string;
   unit?: string;
   notes?: string;
-}) {
+}
+
+export async function createProduct(payload: ProductPayload) {
   const { data } = await api.post<Product>("/products", payload);
+  return data;
+}
+
+export async function updateProduct(id: number, payload: ProductPayload) {
+  const { data } = await api.put<Product>(`/products/${id}`, payload);
+  return data;
+}
+
+export async function deleteProduct(id: number) {
+  await api.delete(`/products/${id}`);
+}
+
+export async function bulkDeleteProducts(ids: number[]) {
+  const { data } = await api.post<{ deleted: number; errors: { id: number; message: string }[] }>(
+    "/products/bulk-delete",
+    { ids }
+  );
   return data;
 }
 

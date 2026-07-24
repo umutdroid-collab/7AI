@@ -81,6 +81,7 @@ class Product(Base):
     name: Mapped[str] = mapped_column(String(250), index=True)
     reference_no: Mapped[str] = mapped_column(String(100), index=True)   # ref numarası
     ubb_no: Mapped[str | None] = mapped_column(String(100), index=True, nullable=True)  # ÜBB numarası
+    sut_kodu: Mapped[str | None] = mapped_column(String(100), index=True, nullable=True)  # SUT kodu (SGK geri ödeme)
     manufacturer: Mapped[str | None] = mapped_column(String(200), nullable=True)
     unit: Mapped[str | None] = mapped_column(String(50), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

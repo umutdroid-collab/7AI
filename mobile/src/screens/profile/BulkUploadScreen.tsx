@@ -127,7 +127,7 @@ export default function BulkUploadScreen() {
       <CsvUploadSection
         title="Ürünler"
         description="Tüm ürün kartlarınızı tek CSV dosyasıyla ekleyin. Aynı ref no'ya sahip ürün varsa atlanır."
-        columns="name, reference_no (zorunlu), ubb_no, manufacturer, unit, notes"
+        columns="name, reference_no (zorunlu), ubb_no, sut_kodu, manufacturer, unit, notes"
         onUpload={bulkUploadProducts}
       />
 

@@ -115,9 +115,14 @@ export default function StockListScreen({ navigation }: any) {
           </Text>
         </TouchableOpacity>
         {user?.role === "admin" && (
-          <TouchableOpacity style={styles.addHospitalChip} onPress={() => navigation.navigate("HospitalList")}>
-            <Text style={styles.addHospitalChipText}>Hastaneler ⚙</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.addHospitalChip} onPress={() => navigation.navigate("HospitalList")}>
+              <Text style={styles.addHospitalChipText}>Hastaneler ⚙</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.addHospitalChip} onPress={() => navigation.navigate("ProductList")}>
+              <Text style={styles.addHospitalChipText}>Ürünler ⚙</Text>
+            </TouchableOpacity>
+          </>
         )}
       </View>
 

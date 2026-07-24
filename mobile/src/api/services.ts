@@ -190,6 +190,10 @@ export async function markStockItemUsed(stockItemId: number, note?: string) {
   return data;
 }
 
+export async function deleteStockItem(stockItemId: number) {
+  await api.delete(`/stock/${stockItemId}`);
+}
+
 export async function createStockItem(payload: {
   product_id: number;
   lot_no: string;

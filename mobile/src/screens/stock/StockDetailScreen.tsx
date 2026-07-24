@@ -2,10 +2,11 @@ import React, { useCallback, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Alert from "../../utils/alert";
 import { useFocusEffect } from "@react-navigation/native";
-import { fetchStock, fetchStockHistory, markStockItemUsed } from "../../api/services";
+import { deleteStockItem, fetchStock, fetchStockHistory, markStockItemUsed } from "../../api/services";
 import { StockItem, StockMovement } from "../../types";
 import { colors, spacing } from "../../theme";
 import { apiErrorMessage } from "../../api/client";
+import { useAuth } from "../../context/AuthContext";
 
 const MOVEMENT_LABELS: Record<string, string> = {
   dispatch: "Depodan çıkış",
@@ -23,10 +24,12 @@ function locationLabel(item: StockItem): string {
 }
 
 export default function StockDetailScreen({ route, navigation }: any) {
+  const { user } = useAuth();
   const { stockItemId } = route.params;
   const [item, setItem] = useState<StockItem | null>(null);
   const [history, setHistory] = useState<StockMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -67,6 +70,31 @@ export default function StockDetailScreen({ route, navigation }: any) {
     ]);
   }
 
+  function handleDelete() {
+    Alert.alert(
+      "Stok kaydını sil",
+      `${item?.product.name} (Lot: ${item?.lot_no}) kalıcı olarak silinecek, hareket geçmişi de dahil. Emin misiniz?`,
+      [
+        { text: "Vazgeç", style: "cancel" },
+        {
+          text: "Sil",
+          style: "destructive",
+          onPress: async () => {
+            setIsDeleting(true);
+            try {
+              await deleteStockItem(stockItemId);
+              navigation.goBack();
+            } catch (e) {
+              Alert.alert("Hata", apiErrorMessage(e));
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  }
+
   if (isLoading || !item) {
     return <ActivityIndicator style={{ marginTop: spacing(4) }} color={colors.primary} />;
   }
@@ -98,6 +126,15 @@ export default function StockDetailScreen({ route, navigation }: any) {
         {item.status !== "used" && (
           <TouchableOpacity style={styles.secondaryButton} onPress={handleMarkUsed}>
             <Text style={styles.secondaryButtonText}>Kullanıldı Olarak İşaretle</Text>
+          </TouchableOpacity>
+        )}
+        {user?.role === "admin" && (
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} disabled={isDeleting}>
+            {isDeleting ? (
+              <ActivityIndicator color={colors.danger} />
+            ) : (
+              <Text style={styles.deleteButtonText}>Stok Kaydını Sil</Text>
+            )}
           </TouchableOpacity>
         )}
       </View>
@@ -166,6 +203,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   secondaryButtonText: { color: colors.text, fontWeight: "600" },
+  deleteButton: {
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    paddingVertical: spacing(1.75),
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.danger,
+  },
+  deleteButtonText: { color: colors.danger, fontWeight: "600" },
   sectionTitle: { color: colors.text, fontSize: 16, fontWeight: "700", marginTop: spacing(3), marginBottom: spacing(1) },
   historyRow: {
     backgroundColor: colors.surface,

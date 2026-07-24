@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.database import get_db
 from app.deps import get_current_user, require_admin
-from app.models import Invoice, InvoiceStatus, User
+from app.models import Invoice, InvoiceStatus, Notification, User
 from app.schemas import InvoiceOut, InvoiceUpdate
 from app.services.invoice_watcher import ingest_pdf, scan_existing_invoices
 from app.utils import safe_pdf_filename, unique_destination
@@ -38,7 +38,7 @@ def list_invoices(
         query = query.filter(
             (Invoice.invoice_number.ilike(like)) | (Invoice.counterparty.ilike(like))
         )
-    invoices = query.order_by(Invoice.due_date.is_(None), Invoice.due_date).all()
+    invoices = query.order_by(Invoice.invoice_number.is_(None), Invoice.invoice_number.desc()).all()
 
     today = date.today()
     if upcoming_only:
@@ -137,6 +137,18 @@ def update_invoice(invoice_id: int, payload: InvoiceUpdate, db: Session = Depend
     db.commit()
     db.refresh(invoice)
     return _with_days(invoice)
+
+
+@router.delete("/{invoice_id}", status_code=204)
+def delete_invoice(invoice_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    invoice = db.get(Invoice, invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Fatura bulunamadı")
+    db.query(Notification).filter(Notification.invoice_id == invoice_id).delete()
+    if invoice.file_path and os.path.exists(invoice.file_path):
+        os.remove(invoice.file_path)
+    db.delete(invoice)
+    db.commit()
 
 
 @router.get("/{invoice_id}/pdf")

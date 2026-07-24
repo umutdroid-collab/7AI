@@ -6,7 +6,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import secureStorage from "../../utils/secureStorage";
 import { api, apiErrorMessage, API_BASE_URL, TOKEN_KEY } from "../../api/client";
-import { fetchInvoice, invoicePdfUrl, updateInvoiceStatus } from "../../api/services";
+import { deleteInvoice, fetchInvoice, invoicePdfUrl, updateInvoiceStatus } from "../../api/services";
 import { Invoice } from "../../types";
 import { colors, spacing } from "../../theme";
 import { useAuth } from "../../context/AuthContext";
@@ -20,13 +20,14 @@ const STATUS_LABELS: Record<string, string> = {
   open: "Açık",
 };
 
-export default function InvoiceDetailScreen({ route }: any) {
+export default function InvoiceDetailScreen({ route, navigation }: any) {
   const { user } = useAuth();
   const { invoiceId } = route.params;
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -92,6 +93,28 @@ export default function InvoiceDetailScreen({ route }: any) {
     }
   }
 
+  function handleDelete() {
+    if (!invoice) return;
+    Alert.alert("Faturayı sil", "Bu fatura ve PDF dosyası kalıcı olarak silinecek. Emin misiniz?", [
+      { text: "Vazgeç", style: "cancel" },
+      {
+        text: "Sil",
+        style: "destructive",
+        onPress: async () => {
+          setIsDeleting(true);
+          try {
+            await deleteInvoice(invoice.id);
+            navigation.goBack();
+          } catch (e) {
+            Alert.alert("Hata", apiErrorMessage(e));
+          } finally {
+            setIsDeleting(false);
+          }
+        },
+      },
+    ]);
+  }
+
   if (isLoading || !invoice) {
     return <ActivityIndicator style={{ marginTop: spacing(4) }} color={colors.primary} />;
   }
@@ -139,6 +162,16 @@ export default function InvoiceDetailScreen({ route }: any) {
             <Text style={[styles.statusButtonText, invoice.status === "paid" && styles.statusButtonUndoText]}>
               {invoice.status === "paid" ? "Ödendi İşaretini Kaldır" : "Ödendi Olarak İşaretle"}
             </Text>
+          )}
+        </TouchableOpacity>
+      )}
+
+      {user?.role === "admin" && (
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} disabled={isDeleting}>
+          {isDeleting ? (
+            <ActivityIndicator color={colors.danger} />
+          ) : (
+            <Text style={styles.deleteButtonText}>🗑 Faturayı Sil</Text>
           )}
         </TouchableOpacity>
       )}
@@ -199,4 +232,14 @@ const styles = StyleSheet.create({
   statusButtonText: { color: "#0f172a", fontWeight: "700" },
   statusButtonUndo: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   statusButtonUndoText: { color: colors.text },
+  deleteButton: {
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    paddingVertical: spacing(1.75),
+    alignItems: "center",
+    marginTop: spacing(1.5),
+    borderWidth: 1,
+    borderColor: colors.danger,
+  },
+  deleteButtonText: { color: colors.danger, fontWeight: "700" },
 });

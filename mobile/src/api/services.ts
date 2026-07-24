@@ -234,6 +234,10 @@ export async function updateInvoiceStatus(invoiceId: number, status: Invoice["st
   return data;
 }
 
+export async function deleteInvoice(invoiceId: number) {
+  await api.delete(`/invoices/${invoiceId}`);
+}
+
 // --- Notifications ---
 
 export async function fetchNotifications(unreadOnly = false) {

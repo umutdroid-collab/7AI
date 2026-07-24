@@ -87,6 +87,11 @@ export default function InvoiceListScreen({ navigation }: any) {
             )}
           </TouchableOpacity>
         )}
+        {user?.role === "admin" && (
+          <TouchableOpacity style={styles.uploadButton} onPress={() => navigation.navigate("BulkUpload")}>
+            <Text style={styles.uploadText}>📚</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.bellButton} onPress={() => navigation.navigate("Notifications")}>
           <Text style={styles.bellText}>🔔</Text>
           {unreadCount > 0 && (

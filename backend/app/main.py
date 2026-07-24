@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.database import Base, engine
 from app.routers import assistant, auth, checkins, hospitals, invoices, notifications, products, sales_targets, stock
 from app.seed import seed_default_admin
+from app.services.migrations import run_startup_migrations
 from app.services.invoice_watcher import start_invoice_watcher
 from app.services.reminders import start_scheduler
 from app.services.vector_store import reindex_all
@@ -26,6 +27,7 @@ async def lifespan(app: FastAPI):
     global _observer, _scheduler
 
     Base.metadata.create_all(bind=engine)
+    run_startup_migrations(engine)
     seed_default_admin()
 
     _observer = start_invoke_watcher_safe()

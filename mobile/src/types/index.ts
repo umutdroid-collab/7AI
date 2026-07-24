@@ -117,6 +117,8 @@ export interface CheckIn {
   user: User;
   hospital: Hospital;
   comment: string | null;
+  latitude: number | null;
+  longitude: number | null;
   checked_in_at: string;
 }
 

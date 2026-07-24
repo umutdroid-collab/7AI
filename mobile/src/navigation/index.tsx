@@ -96,7 +96,7 @@ function CheckInStack() {
       <CheckInStackNav.Screen
         name="CheckIn"
         component={CheckInScreen}
-        options={({ navigation }) => ({ title: "Çalışan Takip", headerRight: () => <HeaderProfileButton navigation={navigation} /> })}
+        options={({ navigation }) => ({ title: "Rapor", headerRight: () => <HeaderProfileButton navigation={navigation} /> })}
       />
       <CheckInStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
       <CheckInStackNav.Screen name="BulkUpload" component={BulkUploadScreen} options={{ title: "Toplu Ekleme" }} />
@@ -110,7 +110,7 @@ function TargetsStack() {
       <TargetsStackNav.Screen
         name="PersonelTakip"
         component={PersonelTakipScreen}
-        options={({ navigation }) => ({ title: "Personel Takip", headerRight: () => <HeaderProfileButton navigation={navigation} /> })}
+        options={({ navigation }) => ({ title: "Hedefler", headerRight: () => <HeaderProfileButton navigation={navigation} /> })}
       />
       <TargetsStackNav.Screen name="AddSalesTarget" component={AddSalesTargetScreen} options={{ title: "Yeni Hedef" }} />
       <TargetsStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
@@ -132,8 +132,8 @@ function MainTabs() {
       <Tab.Screen name="Stok" component={StockStack} options={{ tabBarLabel: "Stok Takip" }} />
       <Tab.Screen name="Fatura" component={InvoiceStack} options={{ tabBarLabel: "Fatura Takip" }} />
       <Tab.Screen name="Asistan" component={AssistantStack} options={{ tabBarLabel: "Klinik Asistan" }} />
-      <Tab.Screen name="Takip" component={CheckInStack} options={{ tabBarLabel: "Çalışan Takip" }} />
-      <Tab.Screen name="Personel" component={TargetsStack} options={{ tabBarLabel: "Personel" }} />
+      <Tab.Screen name="Takip" component={CheckInStack} options={{ tabBarLabel: "Rapor" }} />
+      <Tab.Screen name="Personel" component={TargetsStack} options={{ tabBarLabel: "Hedefler" }} />
     </Tab.Navigator>
   );
 }

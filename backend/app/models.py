@@ -197,6 +197,8 @@ class CheckIn(Base):
     hospital_id: Mapped[int] = mapped_column(ForeignKey("hospitals.id"))
     photo_path: Mapped[str] = mapped_column(String(500))
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     checked_in_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped["User"] = relationship()

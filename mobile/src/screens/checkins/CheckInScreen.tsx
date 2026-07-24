@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import Alert from "../../utils/alert";
 import secureStorage from "../../utils/secureStorage";
 import { createCheckIn, fetchCheckIns, fetchHospitals } from "../../api/services";
@@ -81,9 +82,26 @@ export default function CheckInScreen() {
     const result = await ImagePicker.launchCameraAsync({ quality: 0.5 });
     if (result.canceled || !result.assets?.length) return;
 
+    let location: { latitude: number; longitude: number } | null = null;
+    try {
+      const locationPermission = await Location.requestForegroundPermissionsAsync();
+      if (locationPermission.granted) {
+        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        location = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+      }
+    } catch {
+      // Konum alınamadı (izin reddedildi, GPS kapalı vb.) - check-in'i konumsuz devam ettir.
+    }
+
     setIsSubmitting(true);
     try {
-      await createCheckIn(selectedHospitalId, result.assets[0].uri, comment || undefined, result.assets[0].file);
+      await createCheckIn(
+        selectedHospitalId,
+        result.assets[0].uri,
+        comment || undefined,
+        result.assets[0].file,
+        location
+      );
       setComment("");
       Alert.alert("Giriş kaydedildi", "İyi çalışmalar!", [{ text: "Tamam", onPress: load }]);
     } catch (e) {

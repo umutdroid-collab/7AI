@@ -180,6 +180,8 @@ class CheckInOut(BaseModel):
     user: UserOut
     hospital: HospitalOut
     comment: str | None
+    latitude: float | None
+    longitude: float | None
     checked_in_at: datetime
 
     class Config:

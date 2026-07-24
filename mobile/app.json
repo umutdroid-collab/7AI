@@ -14,7 +14,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.sirket.sahauygulamasi",
       "infoPlist": {
-        "NSCameraUsageDescription": "Hastane giriş kaydı için fotoğraf çekmek amacıyla kameraya erişim gerekir."
+        "NSCameraUsageDescription": "Hastane giriş kaydı için fotoğraf çekmek amacıyla kameraya erişim gerekir.",
+        "NSLocationWhenInUseUsageDescription": "Check-in yaparken konumunuzu kaydetmek için konum erişimi gerekir."
       }
     },
     "android": {
@@ -23,7 +24,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0f172a"
       },
-      "permissions": ["CAMERA"]
+      "permissions": ["CAMERA", "ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -39,6 +40,12 @@
         "expo-image-picker",
         {
           "cameraPermission": "Hastane giriş kaydı için fotoğraf çekmek amacıyla kameraya erişim gerekir."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Check-in yaparken konumunuzu kaydetmek için konum erişimi gerekir."
         }
       ]
     ],

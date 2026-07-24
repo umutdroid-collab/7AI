@@ -22,6 +22,8 @@ MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 async def create_checkin(
     hospital_id: int = Form(...),
     comment: str | None = Form(None),
+    latitude: float | None = Form(None),
+    longitude: float | None = Form(None),
     photo: UploadFile = File(...),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -52,6 +54,8 @@ async def create_checkin(
         hospital_id=hospital_id,
         photo_path=dest_path,
         comment=comment or None,
+        latitude=latitude,
+        longitude=longitude,
     )
     db.add(checkin)
     db.commit()

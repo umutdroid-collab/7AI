@@ -279,11 +279,16 @@ export async function createCheckIn(
   hospitalId: number,
   photoUri: string,
   comment?: string,
-  webFile?: File | Blob | null
+  webFile?: File | Blob | null,
+  location?: { latitude: number; longitude: number } | null
 ) {
   const form = new FormData();
   form.append("hospital_id", String(hospitalId));
   if (comment) form.append("comment", comment);
+  if (location) {
+    form.append("latitude", String(location.latitude));
+    form.append("longitude", String(location.longitude));
+  }
   form.append("photo", filePart(photoUri, "checkin.jpg", "image/jpeg", webFile), "checkin.jpg");
   const { data } = await api.post<CheckIn>("/checkins", form, {
     headers: { "Content-Type": "multipart/form-data" },

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CheckIn } from "../types";
 import { colors, spacing } from "../theme";
 import { api, API_BASE_URL, apiErrorMessage } from "../api/client";
@@ -78,6 +78,15 @@ export default function CheckInCard({
         <Text style={styles.hospital}>🏥 {checkin.hospital.name}</Text>
         <Text style={styles.time}>{new Date(checkin.checked_in_at).toLocaleString("tr-TR")}</Text>
         {checkin.comment && <Text style={styles.comment}>{checkin.comment}</Text>}
+        {checkin.latitude != null && checkin.longitude != null && (
+          <TouchableOpacity
+            onPress={() =>
+              Linking.openURL(`https://www.google.com/maps?q=${checkin.latitude},${checkin.longitude}`)
+            }
+          >
+            <Text style={styles.mapLink}>📍 Haritada Gör</Text>
+          </TouchableOpacity>
+        )}
       </View>
       {user?.role === "admin" && (
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} disabled={isDeleting}>
@@ -111,6 +120,7 @@ const styles = StyleSheet.create({
   hospital: { color: colors.primary, fontSize: 13, fontWeight: "600", marginTop: 2 },
   time: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   comment: { color: colors.textMuted, fontSize: 12, marginTop: spacing(0.5), fontStyle: "italic" },
+  mapLink: { color: colors.primary, fontSize: 12, marginTop: spacing(0.5), fontWeight: "600" },
   deleteButton: {
     paddingHorizontal: spacing(1.5),
     paddingVertical: spacing(1),

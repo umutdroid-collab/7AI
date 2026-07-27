@@ -102,12 +102,12 @@ export default function InvoiceListScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsRow}>
+      <View style={styles.chipsRow}>
         <Chip label="Tümü" active={filter === "all"} onPress={() => setFilter("all")} />
         <Chip label="Vadesi Yaklaşan" active={filter === "upcoming"} onPress={() => setFilter("upcoming")} />
         <Chip label="Vadesi Geçmiş" active={filter === "overdue"} onPress={() => setFilter("overdue")} />
         <Chip label="Ödendi" active={filter === "paid"} onPress={() => setFilter("paid")} />
-      </ScrollView>
+      </View>
 
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: spacing(4) }} color={colors.primary} />
@@ -166,13 +166,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   bellBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
-  chipsRow: { paddingHorizontal: spacing(2), marginVertical: spacing(1), flexGrow: 0 },
+  chipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: spacing(2),
+    marginVertical: spacing(1),
+    gap: spacing(1),
+  },
   chip: {
     backgroundColor: colors.surface,
     borderRadius: 20,
     paddingHorizontal: spacing(2),
     paddingVertical: spacing(1),
-    marginRight: spacing(1),
     borderWidth: 1,
     borderColor: colors.border,
   },

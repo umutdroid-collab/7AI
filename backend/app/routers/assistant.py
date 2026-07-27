@@ -9,6 +9,7 @@ from app.database import get_db
 from app.deps import get_current_user, require_admin
 from app.models import ClinicalDocument, User
 from app.schemas import ChatRequest, ChatResponse, ClinicalDocumentOut
+from app.services.pubmed import _raw_search as pubmed_raw_search
 from app.services.rag import answer_question
 from app.services.vector_store import index_pdf, reindex_all
 from app.utils import safe_pdf_filename, unique_destination
@@ -32,6 +33,29 @@ def list_documents(db: Session = Depends(get_db), _: User = Depends(get_current_
 def reindex(_: User = Depends(require_admin)):
     total_chunks = reindex_all()
     return {"ok": True, "total_chunks": total_chunks}
+
+
+@router.get("/pubmed-diagnostics")
+def pubmed_diagnostics(_: User = Depends(require_admin)):
+    """PubMed (NCBI) bağlantısını test eder ve gerçek hatayı (varsa) döner -
+    normal sohbet akışında bu hata sessizce yutulup kaynaksız cevap verilir,
+    burada asıl nedeni (bağlantı, zaman aşımı, yetkilendirme vb.) görmek için."""
+    try:
+        results = pubmed_raw_search("aspirin", 1)
+        return {
+            "ok": True,
+            "message": f"NCBI PubMed'e başarıyla bağlanıldı ({len(results)} sonuç).",
+            "sample": results[0] if results else None,
+            "pubmed_email_set": bool(settings.pubmed_email),
+            "pubmed_api_key_set": bool(settings.pubmed_api_key),
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "message": f"{type(e).__name__}: {e}",
+            "pubmed_email_set": bool(settings.pubmed_email),
+            "pubmed_api_key_set": bool(settings.pubmed_api_key),
+        }
 
 
 MAX_UPLOAD_BYTES = 30 * 1024 * 1024

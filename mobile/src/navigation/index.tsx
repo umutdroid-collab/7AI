@@ -23,6 +23,7 @@ import AssistantChatScreen from "../screens/assistant/AssistantChatScreen";
 import CheckInScreen from "../screens/checkins/CheckInScreen";
 import ProfileScreen from "../screens/profile/ProfileScreen";
 import BulkUploadScreen from "../screens/profile/BulkUploadScreen";
+import BackupsScreen from "../screens/profile/BackupsScreen";
 import PersonelTakipScreen from "../screens/targets/PersonelTakipScreen";
 import AddSalesTargetScreen from "../screens/targets/AddSalesTargetScreen";
 
@@ -56,6 +57,7 @@ function StockStack() {
       <StockStackNav.Screen name="ProductList" component={ProductListScreen} options={{ title: "Ürünler" }} />
       <StockStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
       <StockStackNav.Screen name="BulkUpload" component={BulkUploadScreen} options={{ title: "Toplu Ekleme" }} />
+      <StockStackNav.Screen name="Backups" component={BackupsScreen} options={{ title: "Yedekler" }} />
     </StockStackNav.Navigator>
   );
 }
@@ -72,6 +74,7 @@ function InvoiceStack() {
       <InvoiceStackNav.Screen name="Notifications" component={NotificationsScreen} options={{ title: "Bildirimler" }} />
       <InvoiceStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
       <InvoiceStackNav.Screen name="BulkUpload" component={BulkUploadScreen} options={{ title: "Toplu Ekleme" }} />
+      <InvoiceStackNav.Screen name="Backups" component={BackupsScreen} options={{ title: "Yedekler" }} />
     </InvoiceStackNav.Navigator>
   );
 }
@@ -86,6 +89,7 @@ function AssistantStack() {
       />
       <AssistantStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
       <AssistantStackNav.Screen name="BulkUpload" component={BulkUploadScreen} options={{ title: "Toplu Ekleme" }} />
+      <AssistantStackNav.Screen name="Backups" component={BackupsScreen} options={{ title: "Yedekler" }} />
     </AssistantStackNav.Navigator>
   );
 }
@@ -100,6 +104,7 @@ function CheckInStack() {
       />
       <CheckInStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
       <CheckInStackNav.Screen name="BulkUpload" component={BulkUploadScreen} options={{ title: "Toplu Ekleme" }} />
+      <CheckInStackNav.Screen name="Backups" component={BackupsScreen} options={{ title: "Yedekler" }} />
     </CheckInStackNav.Navigator>
   );
 }
@@ -115,6 +120,7 @@ function TargetsStack() {
       <TargetsStackNav.Screen name="AddSalesTarget" component={AddSalesTargetScreen} options={{ title: "Yeni Hedef" }} />
       <TargetsStackNav.Screen name="Profile" component={ProfileScreen} options={{ title: "Profil" }} />
       <TargetsStackNav.Screen name="BulkUpload" component={BulkUploadScreen} options={{ title: "Toplu Ekleme" }} />
+      <TargetsStackNav.Screen name="Backups" component={BackupsScreen} options={{ title: "Yedekler" }} />
     </TargetsStackNav.Navigator>
   );
 }

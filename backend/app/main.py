@@ -6,11 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import Base, engine
-from app.routers import assistant, auth, checkins, hospitals, invoices, notifications, products, sales_targets, stock
+from app.routers import assistant, auth, backups, checkins, hospitals, invoices, notifications, products, sales_targets, stock
 from app.seed import seed_default_admin
 from app.services.migrations import run_startup_migrations
 from app.services.invoice_watcher import start_invoice_watcher
 from app.services.reminders import start_scheduler
+from app.services.backup import start_backup_scheduler
 from app.services.vector_store import reindex_all
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -20,11 +21,12 @@ settings = get_settings()
 
 _observer = None
 _scheduler = None
+_backup_scheduler = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _observer, _scheduler
+    global _observer, _scheduler, _backup_scheduler
 
     Base.metadata.create_all(bind=engine)
     run_startup_migrations(engine)
@@ -32,6 +34,7 @@ async def lifespan(app: FastAPI):
 
     _observer = start_invoke_watcher_safe()
     _scheduler = start_scheduler()
+    _backup_scheduler = start_backup_scheduler()
 
     try:
         chunks = reindex_all()
@@ -46,6 +49,8 @@ async def lifespan(app: FastAPI):
         _observer.join()
     if _scheduler:
         _scheduler.shutdown()
+    if _backup_scheduler:
+        _backup_scheduler.shutdown()
 
 
 def start_invoke_watcher_safe():
@@ -75,6 +80,7 @@ app.include_router(checkins.router)
 app.include_router(sales_targets.router)
 app.include_router(notifications.router)
 app.include_router(assistant.router)
+app.include_router(backups.router)
 
 
 @app.get("/")

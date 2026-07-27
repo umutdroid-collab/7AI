@@ -401,3 +401,33 @@ export async function createSalesTarget(payload: {
 export async function deleteSalesTarget(id: number) {
   await api.delete(`/targets/${id}`);
 }
+
+// --- Backups (admin) ---
+
+export interface BackupInfo {
+  filename: string;
+  size_bytes: number;
+  created_at: string;
+}
+
+export async function fetchBackups() {
+  const { data } = await api.get<BackupInfo[]>("/backups");
+  return data;
+}
+
+export async function runBackupNow() {
+  const { data } = await api.post<{ ok: boolean; filename: string }>("/backups/run");
+  return data;
+}
+
+export function backupDownloadUrl(filename: string) {
+  return `/backups/${encodeURIComponent(filename)}/download`;
+}
+
+export async function restoreBackup(filename: string) {
+  await api.post(`/backups/${encodeURIComponent(filename)}/restore`, null, { params: { confirm: true } });
+}
+
+export async function deleteBackup(filename: string) {
+  await api.delete(`/backups/${encodeURIComponent(filename)}`);
+}

@@ -186,6 +186,14 @@ export default function ProfileScreen() {
             <Text style={styles.bulkUploadChevron}>›</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.bulkUploadCard} onPress={() => navigation.navigate("Backups")}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bulkUploadTitle}>Yedekler</Text>
+              <Text style={styles.bulkUploadSubtitle}>Haftalık otomatik yedekleri görüntüle, indir veya geri yükle</Text>
+            </View>
+            <Text style={styles.bulkUploadChevron}>›</Text>
+          </TouchableOpacity>
+
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Kullanıcılar</Text>
             <TouchableOpacity onPress={() => setShowAddUser((v) => !v)}>

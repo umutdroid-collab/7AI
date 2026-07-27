@@ -21,6 +21,9 @@ class Settings(BaseSettings):
 
     checkin_photos_folder: str = "./data/checkins"
 
+    backup_dir: str = "./data/backups"
+    backup_keep_count: int = 8
+
     qwen_base_url: str = "http://localhost:11434/v1"
     qwen_api_key: str = "ollama"
     qwen_model: str = "qwen2.5:14b-instruct"

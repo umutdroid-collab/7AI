@@ -1,6 +1,11 @@
+import io
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font
+from openpyxl.utils import get_column_letter
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -34,16 +39,14 @@ def _with_expiry(item: StockItem) -> StockItemOut:
     return out
 
 
-@router.get("", response_model=list[StockItemOut])
-def list_stock(
-    hospital_id: int | None = None,
-    carried_by_user_id: int | None = None,
-    q: str | None = None,
-    expiring_within_days: int | None = None,
-    include_used: bool = False,
-    status: StockItemStatus | None = None,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+def _filtered_stock_query(
+    db: Session,
+    hospital_id: int | None,
+    carried_by_user_id: int | None,
+    q: str | None,
+    expiring_within_days: int | None,
+    include_used: bool,
+    status: StockItemStatus | None,
 ):
     """Konsinye stok listesi. hospital_id verilmezse depodaki + tüm hastanelerdeki ürünler döner.
     q: ref no / ÜBB no / lot no / seri no üzerinde arama yapar (hangi hastanede ne var, karışıklığı çözer).
@@ -82,10 +85,109 @@ def list_stock(
         query = query.filter(StockItem.skt <= cutoff + timedelta(days=expiring_within_days))
 
     if status == StockItemStatus.USED:
-        items = query.order_by(StockItem.updated_at.desc()).all()
-    else:
-        items = query.order_by(StockItem.skt).all()
+        return query.order_by(StockItem.updated_at.desc())
+    return query.order_by(StockItem.skt)
+
+
+@router.get("", response_model=list[StockItemOut])
+def list_stock(
+    hospital_id: int | None = None,
+    carried_by_user_id: int | None = None,
+    q: str | None = None,
+    expiring_within_days: int | None = None,
+    include_used: bool = False,
+    status: StockItemStatus | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    items = _filtered_stock_query(
+        db, hospital_id, carried_by_user_id, q, expiring_within_days, include_used, status
+    ).all()
     return [_with_expiry(i) for i in items]
+
+
+STATUS_LABELS = {
+    StockItemStatus.IN_STOCK: "Depoda",
+    StockItemStatus.AT_HOSPITAL: "Hastanede",
+    StockItemStatus.IN_VEHICLE: "Araçta",
+    StockItemStatus.USED: "Kullanıldı",
+    StockItemStatus.RETURNED: "İade Edildi",
+    StockItemStatus.EXPIRED: "SKT Geçti",
+}
+
+EXPORT_COLUMNS = [
+    "Ürün",
+    "Ref No",
+    "ÜBB No",
+    "SUT Kodu",
+    "Lot No",
+    "Seri No",
+    "SKT",
+    "Kalan Gün",
+    "Miktar",
+    "Durum",
+    "Konum",
+    "Taşıyan",
+    "Kayıt Tarihi",
+]
+
+
+@router.get("/export")
+def export_stock(
+    hospital_id: int | None = None,
+    carried_by_user_id: int | None = None,
+    q: str | None = None,
+    expiring_within_days: int | None = None,
+    include_used: bool = False,
+    status: StockItemStatus | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    items = _filtered_stock_query(
+        db, hospital_id, carried_by_user_id, q, expiring_within_days, include_used, status
+    ).all()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Stok"
+    ws.append(EXPORT_COLUMNS)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+
+    for item in items:
+        location = item.hospital.name if item.hospital else (f"{item.carried_by.full_name} (araçta)" if item.carried_by else "Depo")
+        ws.append([
+            item.product.name,
+            item.product.reference_no,
+            item.product.ubb_no or "",
+            item.product.sut_kodu or "",
+            item.lot_no,
+            item.serial_no or "",
+            item.skt.strftime("%d.%m.%Y"),
+            (item.skt - date.today()).days,
+            item.quantity,
+            STATUS_LABELS.get(item.status, item.status.value),
+            location,
+            item.carried_by.full_name if item.carried_by else "",
+            item.created_at.strftime("%d.%m.%Y"),
+        ])
+
+    for i, column_title in enumerate(EXPORT_COLUMNS, start=1):
+        column_letter = get_column_letter(i)
+        cell_lengths = [len(str(row[i - 1])) for row in ws.iter_rows(min_row=2, values_only=True)]
+        max_len = max([len(column_title), *cell_lengths])
+        ws.column_dimensions[column_letter].width = min(max_len + 2, 40)
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    filename = f"stok-raporu-{date.today().isoformat()}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/{stock_item_id}", response_model=StockItemOut)

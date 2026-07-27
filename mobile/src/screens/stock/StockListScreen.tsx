@@ -2,6 +2,7 @@ import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -10,11 +11,15 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { fetchHospitals, fetchStock } from "../../api/services";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+import Alert from "../../utils/alert";
+import secureStorage from "../../utils/secureStorage";
+import { fetchHospitals, fetchStock, stockExportUrl } from "../../api/services";
 import { Hospital, StockItem } from "../../types";
 import { colors, spacing } from "../../theme";
 import StockItemCard from "../../components/StockItemCard";
-import { apiErrorMessage } from "../../api/client";
+import { api, apiErrorMessage, API_BASE_URL, TOKEN_KEY } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import HospitalPickerModal from "../../components/HospitalPickerModal";
 import ErrorRetry from "../../components/ErrorRetry";
@@ -31,6 +36,7 @@ export default function StockListScreen({ navigation }: any) {
   const [items, setItems] = useState<StockItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -38,18 +44,23 @@ export default function StockListScreen({ navigation }: any) {
     }, [])
   );
 
+  const buildParams = useCallback(() => {
+    const params: any = { q: query || undefined };
+    if (viewMode === "used") {
+      params.status = "used";
+    }
+    if (selectedHospitalId === "warehouse") {
+      // Depodaki ürünler: hospital_id backend'de sorgulanamıyor (null filtre), istemci tarafında filtrele
+    } else if (selectedHospitalId !== "all") {
+      params.hospital_id = selectedHospitalId;
+    }
+    return params;
+  }, [query, selectedHospitalId, viewMode]);
+
   const load = useCallback(async () => {
     setError(null);
     try {
-      const params: any = { q: query || undefined };
-      if (viewMode === "used") {
-        params.status = "used";
-      }
-      if (selectedHospitalId === "warehouse") {
-        // Depodaki ürünler: hospital_id backend'de sorgulanamıyor (null filtre), istemci tarafında filtrele
-      } else if (selectedHospitalId !== "all") {
-        params.hospital_id = selectedHospitalId;
-      }
+      const params = buildParams();
       const data = await fetchStock(params);
       const filtered = selectedHospitalId === "warehouse" ? data.filter((i) => !i.hospital) : data;
       setItems(filtered);
@@ -58,13 +69,47 @@ export default function StockListScreen({ navigation }: any) {
     } finally {
       setIsLoading(false);
     }
-  }, [query, selectedHospitalId, viewMode]);
+  }, [buildParams, selectedHospitalId]);
 
   useFocusEffect(
     useCallback(() => {
       load();
     }, [load])
   );
+
+  async function handleExportExcel() {
+    setIsExporting(true);
+    try {
+      const url = stockExportUrl(buildParams());
+      const filename = `stok-raporu-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      if (Platform.OS === "web") {
+        const response = await api.get(url, { responseType: "blob" });
+        const blobUrl = URL.createObjectURL(response.data as Blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      } else {
+        const token = await secureStorage.getItemAsync(TOKEN_KEY);
+        const localUri = `${FileSystem.cacheDirectory}${filename}`;
+        const result = await FileSystem.downloadAsync(`${API_BASE_URL}${url}`, localUri, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(result.uri);
+        } else {
+          Alert.alert("İndirildi", `Excel raporu kaydedildi: ${result.uri}`);
+        }
+      }
+    } catch (e) {
+      Alert.alert("Hata", apiErrorMessage(e));
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -124,6 +169,13 @@ export default function StockListScreen({ navigation }: any) {
             </TouchableOpacity>
           </>
         )}
+        <TouchableOpacity style={styles.addHospitalChip} onPress={handleExportExcel} disabled={isExporting}>
+          {isExporting ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <Text style={styles.addHospitalChipText}>📊 Excel'e Aktar</Text>
+          )}
+        </TouchableOpacity>
       </View>
 
       <HospitalPickerModal

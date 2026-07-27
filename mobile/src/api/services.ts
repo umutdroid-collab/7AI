@@ -152,16 +152,27 @@ export async function bulkDeleteProducts(ids: number[]) {
 
 // --- Stock ---
 
-export async function fetchStock(params: {
+interface StockQueryParams {
   hospital_id?: number;
   carried_by_user_id?: number;
   q?: string;
   expiring_within_days?: number;
   status?: StockItem["status"];
   include_used?: boolean;
-}) {
+}
+
+export async function fetchStock(params: StockQueryParams) {
   const { data } = await api.get<StockItem[]>("/stock", { params });
   return data;
+}
+
+export function stockExportUrl(params: StockQueryParams) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") qs.append(key, String(value));
+  });
+  const suffix = qs.toString();
+  return `/stock/export${suffix ? `?${suffix}` : ""}`;
 }
 
 export async function fetchStockHistory(stockItemId: number) {

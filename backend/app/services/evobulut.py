@@ -80,12 +80,13 @@ def _call(module_path: str, payload: dict, retry: bool = True) -> dict:
     return data
 
 
-def fetch_sales_invoices(tarih_bas: str = "", tarih_son: str = "", sayfa: int = 0) -> list[dict]:
-    """Satış faturalarını (tur=31) çeker. tarih_bas/tarih_son "DD.MM.YYYY" formatında."""
+def fetch_sales_invoices(tarih_bas: str = "", tarih_son: str = "", sayfa: int = 0, a_onay: str = "") -> list[dict]:
+    """Satış faturalarını (tur=31) çeker. tarih_bas/tarih_son "DD.MM.YYYY" formatında.
+    a_onay="1" sadece onaylı faturaları getirir."""
     data = _call("fatura", {
         "cmd": "jq_list",
         "sayfa": str(sayfa),
-        "a_onay": "",
+        "a_onay": a_onay,
         "a_cari_id": "",
         "a_tarih_bas": tarih_bas,
         "a_tarih_son": tarih_son,
@@ -97,7 +98,33 @@ def fetch_sales_invoices(tarih_bas: str = "", tarih_son: str = "", sayfa: int = 
     return data.get("veri", {}).get("Ana", [])
 
 
-def fetch_invoice_pdf(evobulut_id: str) -> dict:
-    """PDF içeriğini (muhtemelen base64) döner - tam yanıt şekli dokümanda
-    örneklenmemişti, ilk gerçek çağrıda netleşecek."""
-    return _call("fatura", {"cmd": "eFaturaPdfGetir", "a_id": evobulut_id})
+PAGE_SIZE = 30
+MAX_PAGES = 100
+
+
+def fetch_all_sales_invoices(a_onay: str = "1") -> list[dict]:
+    """jq_list sayfalama yapıyor (sayfa başına 30 kayıt); boş/eksik bir sayfa
+    gelene kadar tüm sayfaları çeker."""
+    all_items: list[dict] = []
+    for sayfa in range(MAX_PAGES):
+        items = fetch_sales_invoices(sayfa=sayfa, a_onay=a_onay)
+        all_items.extend(items)
+        if len(items) < PAGE_SIZE:
+            break
+    return all_items
+
+
+def fetch_invoice_pdf_url(evobulut_id: str) -> str | None:
+    """eFaturaPdfGetir, PDF'in kendisini değil onu indirebileceğimiz bir
+    URL döner (veri[0].mesaj)."""
+    data = _call("fatura", {"cmd": "eFaturaPdfGetir", "a_id": evobulut_id})
+    veri = data.get("veri")
+    if isinstance(veri, list) and veri and veri[0].get("mesaj"):
+        return veri[0]["mesaj"]
+    return None
+
+
+def download_pdf_bytes(url: str) -> bytes:
+    resp = requests.get(url, timeout=30)
+    resp.raise_for_status()
+    return resp.content

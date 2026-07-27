@@ -148,6 +148,7 @@ class Invoice(Base):
     status: Mapped[InvoiceStatus] = mapped_column(Enum(InvoiceStatus), default=InvoiceStatus.PARSED)
     parse_confidence: Mapped[float] = mapped_column(Float, default=0.0)
     raw_text_excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    evobulut_id: Mapped[str | None] = mapped_column(String(50), index=True, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

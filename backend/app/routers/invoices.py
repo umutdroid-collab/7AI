@@ -76,29 +76,27 @@ def evobulut_diagnostics(_: User = Depends(require_admin)):
 
 @router.get("/evobulut-diagnostics/pdf/{evobulut_id}")
 def evobulut_pdf_diagnostics(evobulut_id: str, _: User = Depends(require_admin)):
-    """Belirli bir EvoBulut fatura ID'si için PDF çekme yanıtının ham şeklini
-    gösterir - alan adını (base64 içeriğin hangi key'de geldiğini) tespit
-    etmek için."""
-    from app.services.evobulut import EvoBulutError, fetch_invoice_pdf
+    """Belirli bir EvoBulut fatura ID'si için PDF indirme URL'sini ve
+    dosyanın gerçekten indirilip indirilemediğini test eder."""
+    from app.services.evobulut import EvoBulutError, download_pdf_bytes, fetch_invoice_pdf_url
 
     try:
-        data = fetch_invoice_pdf(evobulut_id)
-        veri = data.get("veri")
-
-        def describe(value):
-            if isinstance(value, str) and len(value) > 200:
-                return f"<string, {len(value)} karakter, ilk 100: {value[:100]}...>"
-            if isinstance(value, dict):
-                return {k: describe(v) for k, v in value.items()}
-            if isinstance(value, list):
-                return [describe(v) for v in value[:2]]
-            return value
-
-        return {"ok": True, "shape": describe(veri)}
+        url = fetch_invoice_pdf_url(evobulut_id)
+        if not url:
+            return {"ok": False, "message": "PDF URL'si dönmedi"}
+        content = download_pdf_bytes(url)
+        return {"ok": True, "url": url, "pdf_bytes": len(content), "starts_with_pdf_header": content[:4] == b"%PDF"}
     except EvoBulutError as e:
         return {"ok": False, "message": str(e)}
     except Exception as e:
         return {"ok": False, "message": f"{type(e).__name__}: {e}"}
+
+
+@router.post("/evobulut-sync")
+def evobulut_sync(_: User = Depends(require_admin)):
+    from app.services.evobulut_sync import sync_invoices_from_evobulut
+
+    return sync_invoices_from_evobulut()
 
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024

@@ -12,6 +12,7 @@ from app.services.migrations import run_startup_migrations
 from app.services.invoice_watcher import start_invoice_watcher
 from app.services.reminders import start_scheduler
 from app.services.backup import start_backup_scheduler
+from app.services.evobulut_sync import start_evobulut_sync_scheduler
 from app.services.vector_store import reindex_all
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -22,11 +23,12 @@ settings = get_settings()
 _observer = None
 _scheduler = None
 _backup_scheduler = None
+_evobulut_scheduler = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _observer, _scheduler, _backup_scheduler
+    global _observer, _scheduler, _backup_scheduler, _evobulut_scheduler
 
     Base.metadata.create_all(bind=engine)
     run_startup_migrations(engine)
@@ -35,6 +37,7 @@ async def lifespan(app: FastAPI):
     _observer = start_invoke_watcher_safe()
     _scheduler = start_scheduler()
     _backup_scheduler = start_backup_scheduler()
+    _evobulut_scheduler = start_evobulut_sync_scheduler()
 
     try:
         chunks = reindex_all()
@@ -51,6 +54,8 @@ async def lifespan(app: FastAPI):
         _scheduler.shutdown()
     if _backup_scheduler:
         _backup_scheduler.shutdown()
+    if _evobulut_scheduler:
+        _evobulut_scheduler.shutdown()
 
 
 def start_invoke_watcher_safe():

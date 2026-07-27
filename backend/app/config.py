@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     pubmed_email: str = ""
     pubmed_api_key: str = ""
 
+    evobulut_username: str = ""
+    evobulut_password: str = ""
+    evobulut_app_name: str = "7ai-saha-uygulamasi"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

@@ -55,6 +55,25 @@ def rescan_invoice_folder(_: User = Depends(require_admin)):
     return {"ok": True}
 
 
+@router.get("/evobulut-diagnostics")
+def evobulut_diagnostics(_: User = Depends(require_admin)):
+    """EvoBulut bağlantısını test eder: giriş yapıp birkaç satış faturası
+    çekmeyi dener, gerçek hatayı (varsa) döner."""
+    from app.services.evobulut import EvoBulutError, fetch_sales_invoices
+
+    try:
+        items = fetch_sales_invoices()
+        return {
+            "ok": True,
+            "message": f"EvoBulut'a başarıyla bağlanıldı, {len(items)} satış faturası bulundu.",
+            "sample": items[0] if items else None,
+        }
+    except EvoBulutError as e:
+        return {"ok": False, "message": str(e)}
+    except Exception as e:
+        return {"ok": False, "message": f"{type(e).__name__}: {e}"}
+
+
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 

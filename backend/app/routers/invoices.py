@@ -74,6 +74,33 @@ def evobulut_diagnostics(_: User = Depends(require_admin)):
         return {"ok": False, "message": f"{type(e).__name__}: {e}"}
 
 
+@router.get("/evobulut-diagnostics/pdf/{evobulut_id}")
+def evobulut_pdf_diagnostics(evobulut_id: str, _: User = Depends(require_admin)):
+    """Belirli bir EvoBulut fatura ID'si için PDF çekme yanıtının ham şeklini
+    gösterir - alan adını (base64 içeriğin hangi key'de geldiğini) tespit
+    etmek için."""
+    from app.services.evobulut import EvoBulutError, fetch_invoice_pdf
+
+    try:
+        data = fetch_invoice_pdf(evobulut_id)
+        veri = data.get("veri")
+
+        def describe(value):
+            if isinstance(value, str) and len(value) > 200:
+                return f"<string, {len(value)} karakter, ilk 100: {value[:100]}...>"
+            if isinstance(value, dict):
+                return {k: describe(v) for k, v in value.items()}
+            if isinstance(value, list):
+                return [describe(v) for v in value[:2]]
+            return value
+
+        return {"ok": True, "shape": describe(veri)}
+    except EvoBulutError as e:
+        return {"ok": False, "message": str(e)}
+    except Exception as e:
+        return {"ok": False, "message": f"{type(e).__name__}: {e}"}
+
+
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 

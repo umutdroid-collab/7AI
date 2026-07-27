@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -37,10 +37,20 @@ export default function CheckInScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const hasSetDefaultViewMode = useRef(false);
 
   useEffect(() => {
     secureStorage.getItemAsync(TOKEN_KEY).then(setToken);
   }, []);
+
+  useEffect(() => {
+    if (!hasSetDefaultViewMode.current && user) {
+      hasSetDefaultViewMode.current = true;
+      // Adminler için varsayılan görünüm "Tüm Ekip" olsun - asıl kullanım amacı
+      // çalışanların o gün nerede check-in yaptığını görmek, kendi girişleri değil.
+      if (user.role === "admin") setViewMode("team");
+    }
+  }, [user]);
 
   useFocusEffect(
     useCallback(() => {

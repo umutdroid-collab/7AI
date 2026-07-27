@@ -29,6 +29,25 @@ KURALLAR:
 5. Türkçe, net ve profesyonel bir dille cevap ver. Tıbbi tavsiye verme; literatürü özetle ve kaynak göster.
 """
 
+PUBMED_QUERY_SYSTEM_PROMPT = (
+    "Aşağıdaki Türkçe soruyu PubMed'de arama yapmak üzere İngilizce, kısa "
+    "anahtar kelimelere çevir (2-6 kelime). SADECE anahtar kelimeleri yaz; "
+    "açıklama, noktalama işareti veya tırnak ekleme. Soru tıbbi bir ürün/"
+    "hastalık/klinik konu içermiyorsa boş bırak."
+)
+
+
+def _pubmed_search_terms(question: str) -> str:
+    """PubMed İngilizce indekslendiği için Türkçe soru doğrudan arama
+    terimi olarak kullanıldığında neredeyse hiç sonuç dönmüyor. Qwen ile
+    kısa İngilizce anahtar kelimelere çevirip onu aratıyoruz."""
+    try:
+        terms = ask_qwen(PUBMED_QUERY_SYSTEM_PROMPT, question, temperature=0.0).strip()
+        return terms or question
+    except Exception:
+        logger.exception("PubMed arama terimi çevirisi başarısız oldu, orijinal soru kullanılacak")
+        return question
+
 
 def _build_context(chunks: list[dict], pubmed_results: list[dict]) -> str:
     parts = []
@@ -53,7 +72,7 @@ def _build_context(chunks: list[dict], pubmed_results: list[dict]) -> str:
 
 def answer_question(db: Session, question: str, user_id: int | None) -> tuple[str, list[SourceOut], bool]:
     chunks = query_relevant_chunks(question, n_results=5)
-    pubmed_results = search_pubmed(question, max_results=5)
+    pubmed_results = search_pubmed(_pubmed_search_terms(question), max_results=5)
 
     if not chunks and not pubmed_results:
         _log(db, user_id, question, REFUSAL_MESSAGE, [], was_answered=False)

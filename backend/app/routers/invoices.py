@@ -43,8 +43,10 @@ def list_invoices(
     today = date.today()
     if upcoming_only:
         invoices = [i for i in invoices if i.due_date and i.due_date >= today]
+        invoices.sort(key=lambda i: i.due_date)
     if overdue_only:
         invoices = [i for i in invoices if i.due_date and i.due_date < today]
+        invoices.sort(key=lambda i: i.due_date)
 
     return [_with_days(i) for i in invoices]
 

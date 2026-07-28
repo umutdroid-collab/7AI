@@ -3,12 +3,13 @@ import { ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, Te
 import Alert from "../../utils/alert";
 import { useFocusEffect } from "@react-navigation/native";
 import * as DocumentPicker from "expo-document-picker";
-import { fetchInvoices, fetchNotifications, uploadInvoicePdf } from "../../api/services";
+import { fetchInvoices, fetchNotifications, invoiceExportUrl, uploadInvoicePdf } from "../../api/services";
 import { Invoice } from "../../types";
 import { colors, spacing } from "../../theme";
 import InvoiceCard from "../../components/InvoiceCard";
 import ErrorRetry from "../../components/ErrorRetry";
 import { apiErrorMessage } from "../../api/client";
+import { dateStampedFilename, downloadFile } from "../../utils/download";
 import { useAuth } from "../../context/AuthContext";
 
 type Filter = "all" | "upcoming" | "overdue" | "paid";
@@ -21,6 +22,7 @@ export default function InvoiceListScreen({ navigation }: any) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -67,6 +69,23 @@ export default function InvoiceListScreen({ navigation }: any) {
     }
   }
 
+  async function handleExportExcel() {
+    setIsExporting(true);
+    try {
+      const url = invoiceExportUrl({
+        q: query || undefined,
+        upcoming_only: filter === "upcoming" || undefined,
+        overdue_only: filter === "overdue" || undefined,
+        paid_only: filter === "paid" || undefined,
+      });
+      await downloadFile(url, dateStampedFilename("fatura-raporu", "xlsx"));
+    } catch (e) {
+      Alert.alert("Hata", apiErrorMessage(e));
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
@@ -107,6 +126,13 @@ export default function InvoiceListScreen({ navigation }: any) {
         <Chip label="Vadesi Yaklaşan" active={filter === "upcoming"} onPress={() => setFilter("upcoming")} />
         <Chip label="Vadesi Geçmiş" active={filter === "overdue"} onPress={() => setFilter("overdue")} />
         <Chip label="Ödendi" active={filter === "paid"} onPress={() => setFilter("paid")} />
+        <TouchableOpacity style={styles.exportChip} onPress={handleExportExcel} disabled={isExporting}>
+          {isExporting ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <Text style={styles.exportChipText}>📊 Excel'e Aktar</Text>
+          )}
+        </TouchableOpacity>
       </View>
 
       {isLoading ? (
@@ -184,6 +210,15 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
   chipTextActive: { color: "#0f172a" },
+  exportChip: {
+    borderRadius: 20,
+    paddingHorizontal: spacing(2),
+    paddingVertical: spacing(1),
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: "dashed",
+  },
+  exportChipText: { color: colors.primary, fontSize: 13, fontWeight: "700" },
   error: { color: colors.danger, textAlign: "center", marginTop: spacing(4) },
   empty: { color: colors.textMuted, textAlign: "center", marginTop: spacing(4) },
 });

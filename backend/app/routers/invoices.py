@@ -2,7 +2,7 @@ import os
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -10,6 +10,7 @@ from app.database import get_db
 from app.deps import get_current_user, require_admin
 from app.models import Invoice, InvoiceStatus, Notification, NotificationRead, User
 from app.schemas import InvoiceOut, InvoiceUpdate
+from app.services.excel import build_workbook
 from app.services.invoice_watcher import ingest_pdf, scan_existing_invoices
 from app.utils import safe_pdf_filename, unique_destination
 
@@ -24,14 +25,13 @@ def _with_days(invoice: Invoice) -> InvoiceOut:
     return out
 
 
-@router.get("", response_model=list[InvoiceOut])
-def list_invoices(
-    upcoming_only: bool = False,
-    overdue_only: bool = False,
-    q: str | None = None,
-    db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
-):
+def _filtered_invoices(
+    db: Session,
+    upcoming_only: bool,
+    overdue_only: bool,
+    q: str | None,
+    paid_only: bool = False,
+) -> list[Invoice]:
     query = db.query(Invoice)
     if q:
         like = f"%{q}%"
@@ -41,6 +41,7 @@ def list_invoices(
     invoices = query.order_by(Invoice.invoice_number.is_(None), Invoice.invoice_number.desc()).all()
 
     today = date.today()
+    # Ödenmiş faturalar vade sekmelerinde görünmez: artık yapılacak bir iş değil.
     if upcoming_only:
         invoices = [
             i for i in invoices if i.due_date and i.due_date >= today and i.status != InvoiceStatus.PAID
@@ -51,8 +52,79 @@ def list_invoices(
             i for i in invoices if i.due_date and i.due_date < today and i.status != InvoiceStatus.PAID
         ]
         invoices.sort(key=lambda i: i.due_date)
+    if paid_only:
+        invoices = [i for i in invoices if i.status == InvoiceStatus.PAID]
 
-    return [_with_days(i) for i in invoices]
+    return invoices
+
+
+@router.get("", response_model=list[InvoiceOut])
+def list_invoices(
+    upcoming_only: bool = False,
+    overdue_only: bool = False,
+    q: str | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return [_with_days(i) for i in _filtered_invoices(db, upcoming_only, overdue_only, q)]
+
+
+INVOICE_STATUS_LABELS = {
+    InvoiceStatus.PARSED: "Okundu",
+    InvoiceStatus.NEEDS_REVIEW: "Kontrol Gerekli",
+    InvoiceStatus.PAID: "Ödendi",
+    InvoiceStatus.OVERDUE: "Vadesi Geçti",
+    InvoiceStatus.UPCOMING: "Yaklaşıyor",
+    InvoiceStatus.OPEN: "Açık",
+}
+
+EXPORT_COLUMNS = [
+    "Fatura No",
+    "Firma",
+    "Fatura Tarihi",
+    "Vade Tarihi",
+    "Kalan Gün",
+    "Tutar",
+    "Para Birimi",
+    "Durum",
+    "Kaynak Dosya",
+]
+
+
+@router.get("/export")
+def export_invoices(
+    upcoming_only: bool = False,
+    overdue_only: bool = False,
+    paid_only: bool = False,
+    q: str | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    invoices = _filtered_invoices(db, upcoming_only, overdue_only, q, paid_only)
+    today = date.today()
+
+    rows = [
+        [
+            i.invoice_number or "",
+            i.counterparty or "",
+            i.invoice_date.strftime("%d.%m.%Y") if i.invoice_date else "",
+            i.due_date.strftime("%d.%m.%Y") if i.due_date else "",
+            (i.due_date - today).days if i.due_date else "",
+            i.amount if i.amount is not None else "",
+            i.currency,
+            INVOICE_STATUS_LABELS.get(i.status, i.status.value),
+            i.source_filename,
+        ]
+        for i in invoices
+    ]
+
+    buffer = build_workbook("Faturalar", EXPORT_COLUMNS, rows)
+    filename = f"fatura-raporu-{today.isoformat()}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/rescan")

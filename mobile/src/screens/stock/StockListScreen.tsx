@@ -2,7 +2,6 @@ import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Platform,
   RefreshControl,
   StyleSheet,
   Text,
@@ -11,15 +10,13 @@ import {
   View,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import * as FileSystem from "expo-file-system/legacy";
-import * as Sharing from "expo-sharing";
 import Alert from "../../utils/alert";
-import secureStorage from "../../utils/secureStorage";
 import { fetchHospitals, fetchStock, stockExportUrl } from "../../api/services";
 import { Hospital, StockItem } from "../../types";
 import { colors, spacing } from "../../theme";
 import StockItemCard from "../../components/StockItemCard";
-import { api, apiErrorMessage, API_BASE_URL, TOKEN_KEY } from "../../api/client";
+import { apiErrorMessage } from "../../api/client";
+import { dateStampedFilename, downloadFile } from "../../utils/download";
 import { useAuth } from "../../context/AuthContext";
 import HospitalPickerModal from "../../components/HospitalPickerModal";
 import ErrorRetry from "../../components/ErrorRetry";
@@ -80,30 +77,7 @@ export default function StockListScreen({ navigation }: any) {
   async function handleExportExcel() {
     setIsExporting(true);
     try {
-      const url = stockExportUrl(buildParams());
-      const filename = `stok-raporu-${new Date().toISOString().slice(0, 10)}.xlsx`;
-      if (Platform.OS === "web") {
-        const response = await api.get(url, { responseType: "blob" });
-        const blobUrl = URL.createObjectURL(response.data as Blob);
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(blobUrl);
-      } else {
-        const token = await secureStorage.getItemAsync(TOKEN_KEY);
-        const localUri = `${FileSystem.cacheDirectory}${filename}`;
-        const result = await FileSystem.downloadAsync(`${API_BASE_URL}${url}`, localUri, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(result.uri);
-        } else {
-          Alert.alert("İndirildi", `Excel raporu kaydedildi: ${result.uri}`);
-        }
-      }
+      await downloadFile(stockExportUrl(buildParams()), dateStampedFilename("stok-raporu", "xlsx"));
     } catch (e) {
       Alert.alert("Hata", apiErrorMessage(e));
     } finally {

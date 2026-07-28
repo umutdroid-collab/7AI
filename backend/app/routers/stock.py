@@ -1,11 +1,7 @@
-import io
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
-from openpyxl import Workbook
-from openpyxl.styles import Font
-from openpyxl.utils import get_column_letter
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
@@ -28,6 +24,7 @@ from app.schemas import (
     StockTransferRequest,
 )
 from app.services.bulk_import import import_stock_csv
+from app.services.excel import build_workbook
 
 router = APIRouter(prefix="/stock", tags=["stock"])
 settings = get_settings()
@@ -147,16 +144,10 @@ def export_stock(
         db, hospital_id, carried_by_user_id, q, expiring_within_days, include_used, status
     ).all()
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Stok"
-    ws.append(EXPORT_COLUMNS)
-    for cell in ws[1]:
-        cell.font = Font(bold=True)
-
+    rows = []
     for item in items:
         location = item.hospital.name if item.hospital else (f"{item.carried_by.full_name} (araçta)" if item.carried_by else "Depo")
-        ws.append([
+        rows.append([
             item.product.name,
             item.product.reference_no,
             item.product.ubb_no or "",
@@ -172,15 +163,7 @@ def export_stock(
             item.created_at.strftime("%d.%m.%Y"),
         ])
 
-    for i, column_title in enumerate(EXPORT_COLUMNS, start=1):
-        column_letter = get_column_letter(i)
-        cell_lengths = [len(str(row[i - 1])) for row in ws.iter_rows(min_row=2, values_only=True)]
-        max_len = max([len(column_title), *cell_lengths])
-        ws.column_dimensions[column_letter].width = min(max_len + 2, 40)
-
-    buffer = io.BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
+    buffer = build_workbook("Stok", EXPORT_COLUMNS, rows)
 
     filename = f"stok-raporu-{date.today().isoformat()}.xlsx"
     return StreamingResponse(

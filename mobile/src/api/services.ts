@@ -247,6 +247,20 @@ export function invoicePdfUrl(invoiceId: number) {
   return `/invoices/${invoiceId}/pdf`;
 }
 
+export function invoiceExportUrl(params: {
+  upcoming_only?: boolean;
+  overdue_only?: boolean;
+  paid_only?: boolean;
+  q?: string;
+}) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") qs.append(key, String(value));
+  });
+  const suffix = qs.toString();
+  return `/invoices/export${suffix ? `?${suffix}` : ""}`;
+}
+
 export async function updateInvoiceStatus(invoiceId: number, status: Invoice["status"]) {
   const { data } = await api.patch<Invoice>(`/invoices/${invoiceId}`, { status });
   return data;

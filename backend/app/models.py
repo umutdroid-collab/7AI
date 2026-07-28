@@ -166,6 +166,19 @@ class Notification(Base):
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+class NotificationRead(Base):
+    """Bildirimlerin kim tarafından okunduğunu kişi bazında tutar - is_read
+    tek bir global bayrak olduğunda bir çalışan zili temizleyince herkesinki
+    temizleniyordu."""
+
+    __tablename__ = "notification_reads"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    notification_id: Mapped[int] = mapped_column(ForeignKey("notifications.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    read_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class ClinicalDocument(Base):
     __tablename__ = "clinical_documents"
 

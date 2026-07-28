@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.database import get_db
 from app.deps import get_current_user, require_admin
-from app.models import Invoice, InvoiceStatus, Notification, User
+from app.models import Invoice, InvoiceStatus, Notification, NotificationRead, User
 from app.schemas import InvoiceOut, InvoiceUpdate
 from app.services.invoice_watcher import ingest_pdf, scan_existing_invoices
 from app.utils import safe_pdf_filename, unique_destination
@@ -194,6 +194,13 @@ def delete_invoice(invoice_id: int, db: Session = Depends(get_db), _: User = Dep
     invoice = db.get(Invoice, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Fatura bulunamadı")
+    notification_ids = [
+        n_id for (n_id,) in db.query(Notification.id).filter(Notification.invoice_id == invoice_id)
+    ]
+    if notification_ids:
+        db.query(NotificationRead).filter(NotificationRead.notification_id.in_(notification_ids)).delete(
+            synchronize_session=False
+        )
     db.query(Notification).filter(Notification.invoice_id == invoice_id).delete()
     if invoice.file_path and os.path.exists(invoice.file_path):
         os.remove(invoice.file_path)

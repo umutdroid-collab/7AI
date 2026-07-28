@@ -6,6 +6,7 @@ saklayan basit bir yedekleme sistemi."""
 import logging
 import os
 import shutil
+import sqlite3
 import tempfile
 import zipfile
 from datetime import datetime
@@ -39,6 +40,22 @@ def _backup_dir() -> Path:
     return d
 
 
+def _snapshot_sqlite(sqlite_path: str, dest_path: str) -> None:
+    """Canlı veritabanının tutarlı bir kopyasını alır. Dosyayı doğrudan
+    kopyalamak, tam o anda bir yazma işlemi varsa bozuk bir yedek üretebilir;
+    SQLite'ın kendi backup API'si bunu güvenli şekilde yapar."""
+    src = sqlite3.connect(sqlite_path)
+    try:
+        dst = sqlite3.connect(dest_path)
+        try:
+            with dst:
+                src.backup(dst)
+        finally:
+            dst.close()
+    finally:
+        src.close()
+
+
 def create_backup() -> str:
     """Mevcut DB + veri klasörlerinden bir .zip yedek oluşturur, dosya adını döner."""
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
@@ -48,7 +65,10 @@ def create_backup() -> str:
     with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as zf:
         sqlite_path = _sqlite_path()
         if sqlite_path and os.path.exists(sqlite_path):
-            zf.write(sqlite_path, arcname="app.db")
+            with tempfile.TemporaryDirectory() as tmp:
+                snapshot_path = os.path.join(tmp, "app.db")
+                _snapshot_sqlite(sqlite_path, snapshot_path)
+                zf.write(snapshot_path, arcname="app.db")
 
         for setting_name, arc_prefix in FOLDER_ARCNAMES:
             folder = getattr(settings, setting_name)

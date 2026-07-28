@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import secureStorage from "../utils/secureStorage";
-import { TOKEN_KEY } from "../api/client";
+import Alert from "../utils/alert";
+import { setOnUnauthorized, TOKEN_KEY } from "../api/client";
 import { fetchMe, login as loginRequest } from "../api/services";
 import { User } from "../types";
 
@@ -16,8 +17,20 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const userRef = useRef<User | null>(null);
+  userRef.current = user;
 
   useEffect(() => {
+    setOnUnauthorized(() => {
+      // Uygulama ilk açılırken süresi geçmiş eski bir token'la karşılaşılırsa
+      // kullanıcı zaten giriş ekranını görecek; uyarıyı yalnızca aktif bir
+      // oturum ortasında düşerse göster.
+      const hadActiveSession = userRef.current !== null;
+      setUser(null);
+      if (hadActiveSession) {
+        Alert.alert("Oturum süresi doldu", "Güvenliğiniz için oturumunuz kapatıldı. Lütfen tekrar giriş yapın.");
+      }
+    });
     (async () => {
       const token = await secureStorage.getItemAsync(TOKEN_KEY);
       if (token) {

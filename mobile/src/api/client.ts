@@ -19,6 +19,27 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+// Token süresi dolduğunda (8 saat) her istek 401 dönmeye başlar; kullanıcıya
+// anlamsız "beklenmeyen hata"lar göstermek yerine oturumu kapatıp giriş
+// ekranına yönlendiriyoruz. AuthContext açılışta buraya logout'unu kaydeder.
+let onUnauthorized: (() => void) | null = null;
+
+export function setOnUnauthorized(callback: () => void) {
+  onUnauthorized = callback;
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const isLoginRequest = axios.isAxiosError(error) && String(error.config?.url).includes("/auth/login");
+    if (axios.isAxiosError(error) && error.response?.status === 401 && !isLoginRequest) {
+      await secureStorage.deleteItemAsync(TOKEN_KEY);
+      onUnauthorized?.();
+    }
+    return Promise.reject(error);
+  }
+);
+
 export function apiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     const detail = error.response?.data?.detail;

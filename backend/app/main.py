@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import Base, engine
-from app.routers import assistant, auth, backups, checkins, hospitals, invoices, notifications, products, sales_targets, stock
+from app.routers import assistant, audit_logs, auth, backups, checkins, hospitals, invoices, notifications, products, sales_targets, stock
 from app.seed import seed_default_admin
 from app.services.migrations import run_startup_migrations
 from app.services.invoice_watcher import start_invoice_watcher
@@ -86,6 +86,7 @@ app.include_router(sales_targets.router)
 app.include_router(notifications.router)
 app.include_router(assistant.router)
 app.include_router(backups.router)
+app.include_router(audit_logs.router)
 
 
 @app.get("/")

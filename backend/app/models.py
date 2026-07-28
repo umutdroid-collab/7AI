@@ -170,6 +170,24 @@ class Notification(Base):
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+class AuditLog(Base):
+    """Kim neyi sildi/değiştirdi kaydı. Çok kullanıcılı bir sistemde bir
+    kayıt kaybolduğunda ya da beklenmedik şekilde değiştiğinde geriye dönüp
+    bakabilmek için - özellikle geri alınamayan işlemler (silme, geri
+    yükleme, toplu silme) için."""
+
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    user_name: Mapped[str] = mapped_column(String(120))  # kullanıcı sonradan silinse de kalsın
+    action: Mapped[str] = mapped_column(String(60), index=True)
+    entity_type: Mapped[str] = mapped_column(String(60), index=True)
+    entity_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    summary: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
 class NotificationRead(Base):
     """Bildirimlerin kim tarafından okunduğunu kişi bazında tutar - is_read
     tek bir global bayrak olduğunda bir çalışan zili temizleyince herkesinki

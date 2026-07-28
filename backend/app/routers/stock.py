@@ -25,6 +25,7 @@ from app.schemas import (
 )
 from app.services.bulk_import import import_stock_csv
 from app.services.excel import build_workbook
+from app.services import audit
 
 router = APIRouter(prefix="/stock", tags=["stock"])
 settings = get_settings()
@@ -324,10 +325,14 @@ def mark_used(stock_item_id: int, note: str | None = None, db: Session = Depends
 
 
 @router.delete("/{stock_item_id}")
-def delete_stock_item(stock_item_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def delete_stock_item(stock_item_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
     item = db.get(StockItem, stock_item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Stok kaydı bulunamadı")
+    audit.record(
+        db, user, "delete", "stock_item", stock_item_id,
+        f"Stok kaydı silindi: {item.product.name} (Lot {item.lot_no}, Seri {item.serial_no or '-'})",
+    )
     db.delete(item)
     db.commit()
     return {"ok": True}

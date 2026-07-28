@@ -237,6 +237,14 @@ export default function ProfileScreen() {
             <Text style={styles.bulkUploadChevron}>›</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.bulkUploadCard} onPress={() => navigation.navigate("AuditLog")}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bulkUploadTitle}>İşlem Günlüğü</Text>
+              <Text style={styles.bulkUploadSubtitle}>Kim neyi sildi, değiştirdi veya geri yükledi</Text>
+            </View>
+            <Text style={styles.bulkUploadChevron}>›</Text>
+          </TouchableOpacity>
+
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Kullanıcılar</Text>
             <TouchableOpacity onPress={() => setShowAddUser((v) => !v)}>

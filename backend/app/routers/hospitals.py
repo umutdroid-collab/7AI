@@ -6,6 +6,7 @@ from app.deps import get_current_user, require_admin
 from app.models import Hospital, User
 from app.schemas import HospitalCreate, HospitalOut
 from app.services.bulk_import import import_hospitals_csv
+from app.services import audit
 
 router = APIRouter(prefix="/hospitals", tags=["hospitals"])
 
@@ -52,7 +53,7 @@ def update_hospital(hospital_id: int, payload: HospitalCreate, db: Session = Dep
 
 
 @router.delete("/{hospital_id}")
-def delete_hospital(hospital_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def delete_hospital(hospital_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
     hospital = db.get(Hospital, hospital_id)
     if not hospital:
         raise HTTPException(status_code=404, detail="Hastane bulunamadı")
@@ -61,6 +62,7 @@ def delete_hospital(hospital_id: int, db: Session = Depends(get_db), _: User = D
             status_code=400,
             detail="Bu hastanede kayıtlı stok ürünleri var, önce onları taşıyın veya iade edin",
         )
+    audit.record(db, user, "delete", "hospital", hospital_id, f"Hastane silindi: {hospital.name}")
     db.delete(hospital)
     db.commit()
     return {"ok": True}

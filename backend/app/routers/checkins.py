@@ -11,6 +11,7 @@ from app.deps import get_current_user, require_admin
 from app.models import CheckIn, Hospital, User, UserRole
 from app.schemas import CheckInOut, CheckInUpdate
 from app.utils import safe_image_filename, unique_destination
+from app.services import audit
 
 router = APIRouter(prefix="/checkins", tags=["checkins"])
 settings = get_settings()
@@ -125,8 +126,13 @@ def update_checkin(
 
 
 @router.delete("/{checkin_id}")
-def delete_checkin(checkin_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def delete_checkin(checkin_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
     checkin = _get_checkin_or_404(checkin_id, db)
+    audit.record(
+        db, user, "delete", "checkin", checkin_id,
+        f"Giriş kaydı silindi: {checkin.user.full_name} - {checkin.hospital.name}"
+        f" ({checkin.checked_in_at:%d.%m.%Y %H:%M})",
+    )
     if os.path.exists(checkin.photo_path):
         os.remove(checkin.photo_path)
     db.delete(checkin)

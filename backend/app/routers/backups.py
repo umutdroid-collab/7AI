@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
 
+from app.database import get_db
 from app.deps import require_admin
+from app.services import audit
 from app.models import User
 from app.services.backup import backup_path, create_backup, list_backups, restore_backup
 
@@ -29,7 +32,12 @@ def download_backup(filename: str, _: User = Depends(require_admin)):
 
 
 @router.post("/{filename}/restore")
-def restore(filename: str, confirm: bool = False, _: User = Depends(require_admin)):
+def restore(
+    filename: str,
+    confirm: bool = False,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
     if not confirm:
         raise HTTPException(
             status_code=400,
@@ -39,14 +47,27 @@ def restore(filename: str, confirm: bool = False, _: User = Depends(require_admi
         restore_backup(filename)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Yedek bulunamadı")
+    # Geri yükleme veritabanının üzerine yazdığı için günlük kaydı SONRA ve
+    # ayrı bir oturumda yazılır - önce yazılsaydı geri yüklenen dosyayla
+    # birlikte kaybolurdu.
+    from app.database import SessionLocal
+
+    fresh = SessionLocal()
+    try:
+        audit.record(fresh, user, "restore", "backup", filename, f"Sistem '{filename}' yedeğinden geri yüklendi")
+        fresh.commit()
+    finally:
+        fresh.close()
     return {"ok": True}
 
 
 @router.delete("/{filename}")
-def delete_backup(filename: str, _: User = Depends(require_admin)):
+def delete_backup(filename: str, db: Session = Depends(get_db), user: User = Depends(require_admin)):
     try:
         path = backup_path(filename)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Yedek bulunamadı")
     path.unlink()
+    audit.record(db, user, "delete", "backup", filename, f"Yedek silindi: {filename}")
+    db.commit()
     return {"ok": True}

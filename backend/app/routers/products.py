@@ -7,6 +7,7 @@ from app.deps import get_current_user, require_admin
 from app.models import Product, User
 from app.schemas import ProductBulkDelete, ProductCreate, ProductOut
 from app.services.bulk_import import import_products_csv
+from app.services import audit
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -53,7 +54,7 @@ async def bulk_upload_products(
 
 @router.post("/bulk-delete")
 def bulk_delete_products(
-    payload: ProductBulkDelete, db: Session = Depends(get_db), _: User = Depends(require_admin)
+    payload: ProductBulkDelete, db: Session = Depends(get_db), user: User = Depends(require_admin)
 ):
     """Birden fazla ürünü tek seferde siler (örn. yanlışlıkla yapılan bir toplu
     yüklemeyi geri almak için). Bağlı stok kaydı olan ürünler atlanır, hata sayılmaz."""
@@ -67,6 +68,7 @@ def bulk_delete_products(
         if product.stock_items:
             errors.append({"id": product_id, "message": f"'{product.name}': bağlı stok kayıtları var"})
             continue
+        audit.record(db, user, "bulk_delete", "product", product_id, f"Toplu silme ile ürün silindi: {product.name} (Ref {product.reference_no})")
         db.delete(product)
         deleted += 1
     db.commit()
@@ -86,7 +88,7 @@ def update_product(product_id: int, payload: ProductCreate, db: Session = Depend
 
 
 @router.delete("/{product_id}")
-def delete_product(product_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def delete_product(product_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
     product = db.get(Product, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Ürün bulunamadı")
@@ -95,6 +97,7 @@ def delete_product(product_id: int, db: Session = Depends(get_db), _: User = Dep
             status_code=400,
             detail="Bu ürüne bağlı stok kayıtları var, önce onları silin",
         )
+    audit.record(db, user, "delete", "product", product_id, f"Ürün silindi: {product.name} (Ref {product.reference_no})")
     db.delete(product)
     db.commit()
     return {"ok": True}

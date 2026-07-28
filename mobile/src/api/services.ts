@@ -452,3 +452,22 @@ export async function restoreBackup(filename: string) {
 export async function deleteBackup(filename: string) {
   await api.delete(`/backups/${encodeURIComponent(filename)}`);
 }
+
+// --- Audit log (admin) ---
+
+export interface AuditLogEntry {
+  id: number;
+  user_name: string;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  summary: string;
+  created_at: string;
+}
+
+export async function fetchAuditLogs(entityType?: string) {
+  const { data } = await api.get<AuditLogEntry[]>("/audit-logs", {
+    params: { entity_type: entityType },
+  });
+  return data;
+}

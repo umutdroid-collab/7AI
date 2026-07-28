@@ -17,6 +17,7 @@ from app.schemas import (
     UserCreate,
     UserOut,
 )
+from app.services import audit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -86,7 +87,7 @@ def me(user: User = Depends(get_current_user)):
 
 
 @router.post("/users", response_model=UserOut)
-def create_user(payload: UserCreate, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def create_user(payload: UserCreate, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
     if len(payload.password) < 8:
         raise HTTPException(status_code=400, detail="Şifre en az 8 karakter olmalı")
     if db.query(User).filter(User.email == payload.email).first():
@@ -98,6 +99,8 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db), _: User = De
         role=payload.role,
     )
     db.add(user)
+    db.flush()
+    audit.record(db, admin, "create", "user", user.id, f"Kullanıcı oluşturuldu: {user.full_name} ({user.email}, {user.role.value})")
     db.commit()
     db.refresh(user)
     return user
@@ -149,6 +152,10 @@ def set_user_active(
     if not target:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
     target.is_active = payload.is_active
+    audit.record(
+        db, admin, "activate" if payload.is_active else "deactivate", "user", target.id,
+        f"Kullanıcı {'aktifleştirildi' if payload.is_active else 'pasifleştirildi'}: {target.full_name} ({target.email})",
+    )
     db.commit()
     db.refresh(target)
     return target

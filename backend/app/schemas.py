@@ -258,3 +258,16 @@ class SalesTargetOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AuditLogOut(BaseModel):
+    id: int
+    user_name: str
+    action: str
+    entity_type: str
+    entity_id: str | None
+    summary: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

@@ -13,6 +13,7 @@ from app.schemas import InvoiceOut, InvoiceUpdate
 from app.services.excel import build_workbook
 from app.services.invoice_watcher import ingest_pdf, scan_existing_invoices
 from app.utils import safe_pdf_filename, unique_destination
+from app.services import audit
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 settings = get_settings()
@@ -262,10 +263,15 @@ def update_invoice(invoice_id: int, payload: InvoiceUpdate, db: Session = Depend
 
 
 @router.delete("/{invoice_id}", status_code=204)
-def delete_invoice(invoice_id: int, db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def delete_invoice(invoice_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
     invoice = db.get(Invoice, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Fatura bulunamadı")
+    audit.record(
+        db, user, "delete", "invoice", invoice_id,
+        f"Fatura silindi: {invoice.invoice_number or invoice.source_filename}"
+        f" ({invoice.counterparty or 'firma bilinmiyor'}, {invoice.amount or 0} {invoice.currency})",
+    )
     notification_ids = [
         n_id for (n_id,) in db.query(Notification.id).filter(Notification.invoice_id == invoice_id)
     ]

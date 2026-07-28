@@ -9,10 +9,15 @@ from app.database import get_db
 from app.deps import get_current_user, require_admin
 from app.models import ClinicalDocument, User
 from app.schemas import ChatRequest, ChatResponse, ClinicalDocumentOut
+import logging
+
+from app.services import audit
 from app.services.pubmed import _raw_search as pubmed_raw_search
 from app.services.rag import answer_question
-from app.services.vector_store import index_pdf, reindex_all
+from app.services.vector_store import index_pdf, reindex_all, remove_document
 from app.utils import safe_pdf_filename, unique_destination
+
+logger = logging.getLogger("assistant")
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
 settings = get_settings()
@@ -61,17 +66,9 @@ def pubmed_diagnostics(_: User = Depends(require_admin)):
 MAX_UPLOAD_BYTES = 30 * 1024 * 1024
 
 
-@router.post("/documents/upload", response_model=ClinicalDocumentOut)
-async def upload_document(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
-):
-    """Klinik çalışma klasörüne fiziksel erişimi olmayan (örn. bulutta
-    barındırılan) kurulumlarda, PDF'i doğrudan uygulamadan yükleyip
-    indekslemeyi tetiklemek için kullanılır."""
+async def _save_and_index(file: UploadFile, db: Session) -> ClinicalDocument:
     if not (file.filename or "").lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Sadece PDF dosyası yükleyebilirsiniz")
+        raise HTTPException(status_code=400, detail=f"'{file.filename}': sadece PDF dosyası yükleyebilirsiniz")
 
     folder = settings.clinical_docs_folder
     os.makedirs(folder, exist_ok=True)
@@ -84,12 +81,67 @@ async def upload_document(
             if size > MAX_UPLOAD_BYTES:
                 out.close()
                 os.remove(dest_path)
-                raise HTTPException(status_code=400, detail="Dosya çok büyük (maksimum 30 MB)")
+                raise HTTPException(status_code=400, detail=f"'{file.filename}': dosya çok büyük (maksimum 30 MB)")
             out.write(chunk)
 
     index_pdf(Path(dest_path))
 
     doc = db.query(ClinicalDocument).filter(ClinicalDocument.filename == os.path.basename(dest_path)).first()
     if not doc:
-        raise HTTPException(status_code=500, detail="Doküman indekslenemedi")
+        raise HTTPException(status_code=500, detail=f"'{file.filename}': doküman indekslenemedi")
     return doc
+
+
+@router.post("/documents/upload", response_model=ClinicalDocumentOut)
+async def upload_document(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Klinik çalışma klasörüne fiziksel erişimi olmayan (örn. bulutta
+    barındırılan) kurulumlarda, PDF'i doğrudan uygulamadan yükleyip
+    indekslemeyi tetiklemek için kullanılır."""
+    return await _save_and_index(file, db)
+
+
+@router.post("/documents/bulk-upload")
+async def bulk_upload_documents(
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    """Birden fazla klinik çalışmayı tek seferde yükler. Her dosya ayrı ayrı
+    işlenir; biri başarısız olursa diğerleri etkilenmez."""
+    created = 0
+    errors = []
+    for file in files:
+        try:
+            await _save_and_index(file, db)
+            created += 1
+        except HTTPException as e:
+            errors.append({"file": file.filename, "message": e.detail})
+        except Exception:
+            logger.exception("Klinik çalışma yüklenemedi: %s", file.filename)
+            errors.append({"file": file.filename, "message": "Dosya işlenemedi"})
+    return {"created": created, "errors": errors}
+
+
+@router.delete("/documents/{document_id}")
+def delete_document(document_id: int, db: Session = Depends(get_db), user: User = Depends(require_admin)):
+    """Klinik çalışmayı hem diskten, hem vektör indeksinden, hem de kayıttan
+    siler - aksi halde asistan silinmiş bir çalışmadan alıntı yapmaya devam
+    ederdi."""
+    doc = db.get(ClinicalDocument, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Klinik çalışma bulunamadı")
+
+    remove_document(doc.filename)
+
+    file_path = os.path.join(settings.clinical_docs_folder, doc.filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    audit.record(db, user, "delete", "clinical_document", document_id, f"Klinik çalışma silindi: {doc.filename}")
+    db.delete(doc)
+    db.commit()
+    return {"ok": True}

@@ -146,6 +146,13 @@ def restore_backup(filename: str) -> None:
                 shutil.rmtree(target_folder)
             shutil.copytree(extracted_folder, target_folder)
 
+    # Vektör dizini de az önce diskte değiştirildi; açık olan Chroma istemcisi
+    # artık silinmiş bir dizine bakıyor - bırakılmazsa klinik asistan sunucu
+    # yeniden başlatılana kadar çalışmaz.
+    from app.services.vector_store import reset_client
+
+    reset_client()
+
     logger.warning("Sistem şu yedekten geri yüklendi: %s", filename)
 
 

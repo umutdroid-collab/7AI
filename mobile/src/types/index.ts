@@ -110,6 +110,7 @@ export interface ClinicalDocument {
   filename: string;
   title: string | null;
   num_chunks: number;
+  file_size: number;
   indexed_at: string;
 }
 

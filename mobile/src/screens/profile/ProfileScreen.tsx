@@ -237,6 +237,14 @@ export default function ProfileScreen() {
             <Text style={styles.bulkUploadChevron}>›</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.bulkUploadCard} onPress={() => navigation.navigate("ClinicalDocuments")}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bulkUploadTitle}>Klinik Çalışmalar</Text>
+              <Text style={styles.bulkUploadSubtitle}>Asistanın kullandığı çalışmaları görüntüle, ekle veya sil</Text>
+            </View>
+            <Text style={styles.bulkUploadChevron}>›</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.bulkUploadCard} onPress={() => navigation.navigate("AuditLog")}>
             <View style={{ flex: 1 }}>
               <Text style={styles.bulkUploadTitle}>İşlem Günlüğü</Text>

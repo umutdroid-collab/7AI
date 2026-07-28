@@ -208,6 +208,9 @@ class ClinicalDocument(Base):
     filename: Mapped[str] = mapped_column(String(300), unique=True)
     title: Mapped[str | None] = mapped_column(String(400), nullable=True)
     num_chunks: Mapped[int] = mapped_column(Integer, default=0)
+    # Dosya boyutu hem yöneticiye gösterilir hem de açılışta "bu dosya zaten
+    # indekslenmiş mi, değişmiş mi" kontrolünde kullanılır.
+    file_size: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     indexed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

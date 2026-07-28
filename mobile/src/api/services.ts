@@ -300,6 +300,25 @@ export async function fetchClinicalDocuments() {
   return data;
 }
 
+export async function bulkUploadClinicalDocuments(
+  files: { uri: string; name: string; webFile?: File | Blob | null }[]
+) {
+  const form = new FormData();
+  for (const file of files) {
+    form.append("files", filePart(file.uri, file.name, "application/pdf", file.webFile), file.name);
+  }
+  const { data } = await api.post<{ created: number; errors: any[] }>(
+    "/assistant/documents/bulk-upload",
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+}
+
+export async function deleteClinicalDocument(documentId: number) {
+  await api.delete(`/assistant/documents/${documentId}`);
+}
+
 export async function uploadClinicalDocument(fileUri: string, fileName: string, webFile?: File | Blob | null) {
   const { data } = await api.post<ClinicalDocument>(
     "/assistant/documents/upload",

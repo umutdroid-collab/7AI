@@ -4,6 +4,7 @@ tamamen yerel/ücretsiz) MiniLM modelini kullanır; harici bir API anahtarı
 gerekmez."""
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import chromadb
@@ -56,6 +57,7 @@ def index_pdf(pdf_path: Path) -> int:
     """Tek bir PDF'i indeksler, oluşturulan chunk sayısını döndürür."""
     collection = get_collection()
     filename = pdf_path.name
+    file_size = pdf_path.stat().st_size
 
     collection.delete(where={"filename": filename})
 
@@ -82,6 +84,8 @@ def index_pdf(pdf_path: Path) -> int:
             db.add(existing)
         existing.title = title
         existing.num_chunks = len(documents)
+        existing.file_size = file_size
+        existing.indexed_at = datetime.utcnow()
         db.commit()
     finally:
         db.close()
@@ -89,16 +93,78 @@ def index_pdf(pdf_path: Path) -> int:
     return len(documents)
 
 
-def reindex_all() -> int:
+def _already_indexed(db, pdf_path: Path) -> bool:
+    """Aynı isim ve aynı boyutta, chunk'ları üretilmiş bir kayıt varsa dosya
+    değişmemiş demektir."""
+    doc = (
+        db.query(ClinicalDocument)
+        .filter(ClinicalDocument.filename == pdf_path.name)
+        .first()
+    )
+    return bool(doc and doc.num_chunks > 0 and doc.file_size == pdf_path.stat().st_size)
+
+
+def reindex_all(force: bool = False) -> int:
+    """Klinik çalışma klasörünü indeksler.
+
+    Varsayılan olarak zaten indekslenmiş ve değişmemiş dosyaları ATLAR: bu
+    fonksiyon her uygulama açılışında çalışıyor ve her PDF'i yeniden
+    gömmek (embedding) doküman sayısıyla doğru orantılı sürüyordu - birkaç
+    yüz çalışmadan sonra açılış dakikalarca sürer, sunucu açılış zaman
+    aşımına düşerdi. Vektörler kalıcı diskte durduğu için yeniden üretmeye
+    zaten gerek yok.
+    """
     folder = Path(settings.clinical_docs_folder)
     folder.mkdir(parents=True, exist_ok=True)
+
+    db = SessionLocal()
+    try:
+        pending = [
+            pdf for pdf in folder.glob("*.pdf")
+            if force or not _already_indexed(db, pdf)
+        ]
+    finally:
+        db.close()
+
+    if not pending:
+        return 0
+
+    logger.info("İndekslenecek klinik çalışma sayısı: %d", len(pending))
     total = 0
-    for pdf_file in folder.glob("*.pdf"):
+    for pdf_file in pending:
         try:
             total += index_pdf(pdf_file)
         except Exception:
             logger.exception("Klinik çalışma indekslenemedi: %s", pdf_file.name)
     return total
+
+
+def remove_document(filename: str) -> None:
+    """Bir klinik çalışmanın vektörlerini indeksten siler."""
+    get_collection().delete(where={"filename": filename})
+
+
+def reset_client() -> None:
+    """Bellekteki Chroma istemcisini serbest bırakır.
+
+    Yedekten geri yükleme vektör dizinini diskte komple değiştiriyor; açık
+    olan istemci o noktada artık var olmayan bir dizine bakar ve asistan
+    sunucu yeniden başlatılana kadar bozuk kalırdı.
+
+    Kendi değişkenlerimizi sıfırlamak yeterli DEĞİL: Chroma, istemcileri
+    süreç içinde yola göre kendi önbelleğinde tutuyor, dolayısıyla yeni bir
+    PersistentClient çağrısı yine eski (bozuk) örneği döndürür. Bu yüzden
+    Chroma'nın kendi önbelleği de temizlenir.
+    """
+    global _client, _collection
+    _client = None
+    _collection = None
+    try:
+        from chromadb.api.client import SharedSystemClient
+
+        SharedSystemClient.clear_system_cache()
+    except Exception:
+        logger.exception("Chroma istemci önbelleği temizlenemedi")
 
 
 def query_relevant_chunks(question: str, n_results: int = 5) -> list[dict]:

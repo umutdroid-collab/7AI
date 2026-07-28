@@ -3,6 +3,7 @@
 değişkenleri uygulama import edilmeden ÖNCE ayarlanmalıdır."""
 
 import os
+import shutil
 import tempfile
 
 import pytest
@@ -29,12 +30,39 @@ ADMIN = ("admin@test.com", "testpass123")
 
 @pytest.fixture(autouse=True)
 def clean_db():
-    """Her testten önce şemayı sıfırla - testler birbirinin verisini görmesin."""
+    """Her testten önce durumu sıfırla - testler birbirinin verisini görmesin.
+
+    Veritabanının yanında DOSYALARIN ve vektör indeksinin de temizlenmesi
+    gerekiyor: uygulama açılışta klinik çalışma klasörünü tarayıp indekslediği
+    için, önceki testten kalan bir PDF sonraki testte yeniden kayıt oluşturur.
+    """
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+
     from app.routers import auth as auth_router
 
     auth_router._failed_logins.clear()  # giriş kilidi sayaçları testler arasında sızmasın
+
+    for folder in (
+        os.environ["CLINICAL_DOCS_FOLDER"],
+        os.environ["INVOICE_FOLDER"],
+        os.environ["CHECKIN_PHOTOS_FOLDER"],
+        os.environ["BACKUP_DIR"],
+    ):
+        if os.path.isdir(folder):
+            shutil.rmtree(folder)
+        os.makedirs(folder, exist_ok=True)
+
+    try:
+        from app.services.vector_store import get_collection
+
+        collection = get_collection()
+        existing = collection.get()
+        if existing["ids"]:
+            collection.delete(ids=existing["ids"])
+    except Exception:
+        pass
+
     yield
 
 

@@ -221,6 +221,7 @@ class ClinicalDocumentOut(BaseModel):
     filename: str
     title: str | None
     num_chunks: int
+    file_size: int = 0
     indexed_at: datetime
 
     class Config:

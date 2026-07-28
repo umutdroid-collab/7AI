@@ -30,3 +30,7 @@ npm-debug.*
 .DS_Store
 .idea/
 .vscode/
+
+# pytest
+backend/.pytest_cache/
+backend/tests/__pycache__/

@@ -72,6 +72,13 @@ export async function createUser(payload: {
   return data;
 }
 
+export async function setEmailNotifications(enabled: boolean) {
+  const { data } = await api.patch<User>("/auth/me/email-preference", {
+    email_notifications_enabled: enabled,
+  });
+  return data;
+}
+
 export async function setUserActive(userId: number, isActive: boolean) {
   const { data } = await api.patch<User>(`/auth/users/${userId}/active`, { is_active: isActive });
   return data;

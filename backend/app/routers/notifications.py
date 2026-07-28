@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, require_admin
 from app.models import Notification, NotificationRead, User
 from app.schemas import NotificationOut
 
@@ -48,6 +48,34 @@ def mark_read(notification_id: int, db: Session = Depends(get_db), user: User = 
         db.add(NotificationRead(notification_id=notification_id, user_id=user.id))
         db.commit()
     return _to_out(notification, {notification_id})
+
+
+@router.post("/email-test")
+def send_test_email(user: User = Depends(require_admin)):
+    """SMTP ayarlarını doğrular: giriş yapan yöneticinin adresine bir deneme
+    e-postası gönderir ve varsa gerçek hatayı döner."""
+    from app.services.email import EmailNotConfigured, send_email
+
+    try:
+        send_email(
+            [user.email],
+            "7AI - Deneme e-postası",
+            "<p>Bu bir deneme e-postasıdır. E-posta bildirimleri çalışıyor.</p>",
+            "Bu bir deneme e-postasıdır. E-posta bildirimleri çalışıyor.",
+        )
+        return {"ok": True, "message": f"Deneme e-postası {user.email} adresine gönderildi."}
+    except EmailNotConfigured as e:
+        return {"ok": False, "message": str(e)}
+    except Exception as e:
+        return {"ok": False, "message": f"{type(e).__name__}: {e}"}
+
+
+@router.post("/digest-run")
+def run_digest_now(_: User = Depends(require_admin)):
+    """Günlük özeti beklemeden çalıştırır (test/kontrol amaçlı)."""
+    from app.services.daily_digest import send_daily_digest
+
+    return send_daily_digest()
 
 
 @router.post("/read-all")

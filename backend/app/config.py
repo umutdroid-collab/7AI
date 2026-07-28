@@ -35,6 +35,16 @@ class Settings(BaseSettings):
     evobulut_password: str = ""
     evobulut_app_name: str = "7ai-saha-uygulamasi"
 
+    # E-posta (SMTP) - günlük vade/SKT özetini göndermek için.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+    smtp_use_tls: bool = True
+    digest_hour: int = 8
+    app_public_url: str = "https://saha.7medikal.com"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

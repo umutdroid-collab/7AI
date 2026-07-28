@@ -6,6 +6,7 @@ export interface User {
   email: string;
   role: UserRole;
   is_active: boolean;
+  email_notifications_enabled: boolean;
 }
 
 export interface Hospital {

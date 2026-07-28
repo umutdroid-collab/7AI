@@ -26,7 +26,17 @@ def run_startup_migrations(engine: Engine) -> None:
                     continue
                 try:
                     col_type = column.type.compile(dialect=engine.dialect)
-                    conn.execute(text(f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {col_type}'))
+                    # server_default varsa DEFAULT'u da yaz: aksi halde mevcut
+                    # satırlar NULL kalır ve örn. bir bool bayrak "kapalı" gibi
+                    # davranır (yeni sütun eklenen tabloda sessiz veri hatası).
+                    default_clause = ""
+                    if column.server_default is not None:
+                        default_sql = getattr(column.server_default, "arg", None)
+                        if default_sql is not None:
+                            default_clause = f" DEFAULT {default_sql}"
+                    conn.execute(
+                        text(f'ALTER TABLE "{table.name}" ADD COLUMN "{column.name}" {col_type}{default_clause}')
+                    )
                     logger.warning("Migrasyon: '%s' tablosuna '%s' sütunu eklendi", table.name, column.name)
                 except Exception:
                     logger.exception(

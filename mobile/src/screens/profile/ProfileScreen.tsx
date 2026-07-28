@@ -4,6 +4,7 @@ import {
   FlatList,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -12,7 +13,13 @@ import {
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import Alert from "../../utils/alert";
 import { useAuth } from "../../context/AuthContext";
-import { changePassword, createUser, fetchUsers, setUserActive } from "../../api/services";
+import {
+  changePassword,
+  createUser,
+  fetchUsers,
+  setEmailNotifications,
+  setUserActive,
+} from "../../api/services";
 import { apiErrorMessage } from "../../api/client";
 import { User } from "../../types";
 import { colors, spacing } from "../../theme";
@@ -20,8 +27,9 @@ import { colors, spacing } from "../../theme";
 const ROLE_LABELS: Record<string, string> = { admin: "Yönetici", employee: "Çalışan" };
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const navigation = useNavigation<any>();
+  const [isSavingEmailPref, setIsSavingEmailPref] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -123,6 +131,18 @@ export default function ProfileScreen() {
     );
   }
 
+  async function handleToggleEmailNotifications(enabled: boolean) {
+    setIsSavingEmailPref(true);
+    try {
+      const updated = await setEmailNotifications(enabled);
+      updateUser(updated);
+    } catch (e) {
+      Alert.alert("Hata", apiErrorMessage(e));
+    } finally {
+      setIsSavingEmailPref(false);
+    }
+  }
+
   function handleLogout() {
     Alert.alert("Çıkış yap", `${user?.full_name} olarak çıkış yapmak istiyor musunuz?`, [
       { text: "Vazgeç", style: "cancel" },
@@ -137,6 +157,29 @@ export default function ProfileScreen() {
         <Text style={styles.email}>{user?.email}</Text>
         <View style={styles.roleBadge}>
           <Text style={styles.roleBadgeText}>{ROLE_LABELS[user?.role ?? ""] ?? user?.role}</Text>
+        </View>
+      </View>
+
+      <Text style={styles.sectionTitle}>Bildirimler</Text>
+      <View style={styles.card}>
+        <View style={styles.prefRow}>
+          <View style={{ flex: 1, marginRight: spacing(2) }}>
+            <Text style={styles.prefTitle}>Günlük e-posta özeti</Text>
+            <Text style={styles.prefSubtitle}>
+              Her sabah vadesi yaklaşan/geçmiş faturalar ve SKT'si yaklaşan stoklar {user?.email} adresine
+              gönderilir.
+            </Text>
+          </View>
+          {isSavingEmailPref ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : (
+            <Switch
+              value={user?.email_notifications_enabled ?? true}
+              onValueChange={handleToggleEmailNotifications}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor="#f1f5f9"
+            />
+          )}
         </View>
       </View>
 
@@ -311,6 +354,9 @@ const styles = StyleSheet.create({
   },
   roleBadgeText: { color: colors.primary, fontSize: 12, fontWeight: "700" },
   sectionTitle: { color: colors.text, fontSize: 15, fontWeight: "700", marginBottom: spacing(1) },
+  prefRow: { flexDirection: "row", alignItems: "center" },
+  prefTitle: { color: colors.text, fontSize: 14, fontWeight: "700" },
+  prefSubtitle: { color: colors.textMuted, fontSize: 12, marginTop: 4, lineHeight: 17 },
   sectionHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",

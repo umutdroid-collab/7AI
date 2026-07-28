@@ -20,9 +20,14 @@ class UserOut(BaseModel):
     email: str
     role: UserRole
     is_active: bool
+    email_notifications_enabled: bool = True
 
     class Config:
         from_attributes = True
+
+
+class EmailPreferenceUpdate(BaseModel):
+    email_notifications_enabled: bool
 
 
 class Token(BaseModel):

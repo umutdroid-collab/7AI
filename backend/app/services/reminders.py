@@ -101,8 +101,17 @@ def run_all_reminder_jobs() -> None:
 
 
 def start_scheduler() -> BackgroundScheduler:
+    from app.services.daily_digest import send_daily_digest
+
     scheduler = BackgroundScheduler(timezone="Europe/Istanbul")
     scheduler.add_job(run_all_reminder_jobs, "interval", hours=6, next_run_time=datetime.now())
+    # Günlük özet sabit saatte (cron) çalışır; interval işlerin aksine
+    # next_run_time verilmiyor - yeniden başlatmalar fazladan e-posta
+    # göndermesin diye.
+    scheduler.add_job(send_daily_digest, "cron", hour=settings.digest_hour, minute=0)
     scheduler.start()
-    logger.info("Hatırlatma zamanlayıcısı başlatıldı (6 saatte bir çalışır)")
+    logger.info(
+        "Hatırlatma zamanlayıcısı başlatıldı (6 saatte bir; günlük özet %02d:00)",
+        settings.digest_hour,
+    )
     return scheduler

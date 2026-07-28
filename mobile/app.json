@@ -43,6 +43,12 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Hastane giriş kaydı için fotoğraf çekmek amacıyla kameraya erişim gerekir."
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Check-in yaparken konumunuzu kaydetmek için konum erişimi gerekir."

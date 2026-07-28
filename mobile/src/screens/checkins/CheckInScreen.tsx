@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,6 +22,7 @@ import { useAuth } from "../../context/AuthContext";
 import CheckInCard from "../../components/CheckInCard";
 import HospitalPickerModal from "../../components/HospitalPickerModal";
 import ErrorRetry from "../../components/ErrorRetry";
+import WebCameraModal from "../../components/WebCameraModal";
 
 type ViewMode = "mine" | "team";
 
@@ -37,6 +39,7 @@ export default function CheckInScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [isCameraVisible, setIsCameraVisible] = useState(false);
   const hasSetDefaultViewMode = useRef(false);
 
   useEffect(() => {
@@ -83,6 +86,15 @@ export default function CheckInScreen() {
       return;
     }
 
+    if (Platform.OS === "web") {
+      // Web'de expo-image-picker'ın kamera seçeneği aslında bir dosya seçici
+      // (<input type=file capture>) - tarayıcıya göre kullanıcı yine de
+      // galeriden eski bir fotoğraf seçebiliyor. O anda çekildiğini garanti
+      // etmek için gerçek kamera akışından kare yakalayan bir bileşen kullanıyoruz.
+      setIsCameraVisible(true);
+      return;
+    }
+
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
       Alert.alert("İzin gerekli", "Fotoğraf çekmek için kamera izni vermeniz gerekiyor");
@@ -91,6 +103,17 @@ export default function CheckInScreen() {
 
     const result = await ImagePicker.launchCameraAsync({ quality: 0.5 });
     if (result.canceled || !result.assets?.length) return;
+
+    await submitCheckIn(result.assets[0].uri, result.assets[0].file);
+  }
+
+  async function handleWebCapture(photo: { uri: string; blob: Blob }) {
+    setIsCameraVisible(false);
+    await submitCheckIn(photo.uri, photo.blob);
+  }
+
+  async function submitCheckIn(photoUri: string, webFile?: Blob | File | null) {
+    if (!selectedHospitalId) return;
 
     let location: { latitude: number; longitude: number } | null = null;
     try {
@@ -105,13 +128,7 @@ export default function CheckInScreen() {
 
     setIsSubmitting(true);
     try {
-      await createCheckIn(
-        selectedHospitalId,
-        result.assets[0].uri,
-        comment || undefined,
-        result.assets[0].file,
-        location
-      );
+      await createCheckIn(selectedHospitalId, photoUri, comment || undefined, webFile, location);
       setComment("");
       Alert.alert("Giriş kaydedildi", "İyi çalışmalar!", [{ text: "Tamam", onPress: load }]);
     } catch (e) {
@@ -123,6 +140,11 @@ export default function CheckInScreen() {
 
   return (
     <View style={styles.container}>
+      <WebCameraModal
+        visible={isCameraVisible}
+        onClose={() => setIsCameraVisible(false)}
+        onCapture={handleWebCapture}
+      />
       <ScrollView contentContainerStyle={{ padding: spacing(2) }} keyboardShouldPersistTaps="handled">
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>Bugün nerede olduğunuzu bildirin</Text>

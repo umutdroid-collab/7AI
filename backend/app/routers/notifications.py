@@ -54,8 +54,9 @@ def mark_read(notification_id: int, db: Session = Depends(get_db), user: User = 
 def send_test_email(user: User = Depends(require_admin)):
     """SMTP ayarlarını doğrular: giriş yapan yöneticinin adresine bir deneme
     e-postası gönderir ve varsa gerçek hatayı döner."""
-    from app.services.email import EmailNotConfigured, send_email
+    from app.services.email import EmailNotConfigured, provider_name, send_email
 
+    provider = provider_name()
     try:
         send_email(
             [user.email],
@@ -63,11 +64,15 @@ def send_test_email(user: User = Depends(require_admin)):
             "<p>Bu bir deneme e-postasıdır. E-posta bildirimleri çalışıyor.</p>",
             "Bu bir deneme e-postasıdır. E-posta bildirimleri çalışıyor.",
         )
-        return {"ok": True, "message": f"Deneme e-postası {user.email} adresine gönderildi."}
+        return {
+            "ok": True,
+            "provider": provider,
+            "message": f"Deneme e-postası {user.email} adresine gönderildi.",
+        }
     except EmailNotConfigured as e:
-        return {"ok": False, "message": str(e)}
+        return {"ok": False, "provider": provider, "message": str(e)}
     except Exception as e:
-        return {"ok": False, "message": f"{type(e).__name__}: {e}"}
+        return {"ok": False, "provider": provider, "message": f"{type(e).__name__}: {e}"}
 
 
 @router.post("/digest-run")

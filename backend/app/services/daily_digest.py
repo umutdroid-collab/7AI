@@ -185,8 +185,11 @@ def recipients(db: Session) -> list[str]:
 
 def send_daily_digest() -> dict:
     if not is_configured():
-        logger.info("SMTP ayarlanmamış, günlük özet e-postası atlandı")
-        return {"ok": False, "message": "SMTP ayarlanmamış"}
+        logger.info("E-posta ayarlanmamış, günlük özet atlandı")
+        return {
+            "ok": False,
+            "message": "E-posta ayarlanmamış (RESEND_API_KEY veya SMTP_HOST ile SMTP_FROM gerekli)",
+        }
 
     db = SessionLocal()
     try:

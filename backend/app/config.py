@@ -35,7 +35,11 @@ class Settings(BaseSettings):
     evobulut_password: str = ""
     evobulut_app_name: str = "7ai-saha-uygulamasi"
 
-    # E-posta (SMTP) - günlük vade/SKT özetini göndermek için.
+    # E-posta - günlük vade/SKT özetini göndermek için.
+    # Railway'in Hobby planı giden SMTP portlarını (25/465/587/2525) tamamen
+    # engellediğinden birincil yöntem HTTPS API'li bir servis (Resend).
+    # SMTP ayarları, SMTP'nin açık olduğu ortamlar için yedek olarak durur.
+    resend_api_key: str = ""
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""

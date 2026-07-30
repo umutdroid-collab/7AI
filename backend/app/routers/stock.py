@@ -23,7 +23,7 @@ from app.schemas import (
     StockMovementOut,
     StockTransferRequest,
 )
-from app.services.bulk_import import import_stock_csv
+from app.services.bulk_import import CsvFormatError, import_stock_csv
 from app.services.excel import build_workbook
 from app.services import audit
 
@@ -235,7 +235,10 @@ async def bulk_upload_stock(
     if not (file.filename or "").lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Sadece CSV dosyası yükleyebilirsiniz")
     content = await file.read()
-    result = import_stock_csv(content, db, user)
+    try:
+        result = import_stock_csv(content, db, user)
+    except CsvFormatError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"created": result.created, "skipped": result.skipped, "errors": result.errors}
 
 

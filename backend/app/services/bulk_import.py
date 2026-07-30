@@ -22,14 +22,38 @@ class ImportResult:
     errors: list[dict] = field(default_factory=list)
 
 
-def _read_rows(csv_bytes: bytes) -> list[dict]:
-    text = csv_bytes.decode("utf-8-sig")
+class CsvFormatError(Exception):
+    """Dosyanın tamamı okunamıyor (yanlış sütun başlıkları vb.) - satır satır
+    hata üretmek yerine tek ve anlaşılır bir mesaj vermek için."""
+
+
+def _read_rows(csv_bytes: bytes, required_columns: set[str]) -> list[dict]:
+    try:
+        text = csv_bytes.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        # Türkçe Excel bazen Windows-1254 ile kaydeder.
+        text = csv_bytes.decode("windows-1254", errors="replace")
+
     sample = text[:2048]
     try:
-        dialect = csv.Sniffer().sniff(sample, delimiters=",;")
+        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
     except csv.Error:
         dialect = csv.excel
+
     reader = csv.DictReader(io.StringIO(text), dialect=dialect)
+    headers = {(h or "").strip().lower() for h in (reader.fieldnames or [])}
+
+    # Zorunlu sütunların hiçbiri yoksa dosya baştan yanlış: her satır için
+    # aynı hatayı üretmek yerine ne beklendiğini tek seferde söyle.
+    missing = required_columns - headers
+    if missing == required_columns:
+        found = ", ".join(sorted(h for h in headers if h)) or "(başlık okunamadı)"
+        raise CsvFormatError(
+            f"CSV sütun başlıkları tanınmadı. Beklenen sütunlar: "
+            f"{', '.join(sorted(required_columns))}. Dosyada bulunanlar: {found}. "
+            f"İlk satırın sütun başlıkları olduğundan emin olun."
+        )
+
     normalized_rows = []
     for row in reader:
         normalized_rows.append({(k or "").strip().lower(): (v or "").strip() for k, v in row.items()})
@@ -48,7 +72,7 @@ def _parse_flexible_date(raw: str) -> date | None:
 
 def import_hospitals_csv(csv_bytes: bytes, db: Session) -> ImportResult:
     result = ImportResult()
-    rows = _read_rows(csv_bytes)
+    rows = _read_rows(csv_bytes, {"name"})
     existing_names = {h.name.strip().lower() for h in db.query(Hospital).all()}
 
     for idx, row in enumerate(rows, start=2):
@@ -76,7 +100,7 @@ def import_hospitals_csv(csv_bytes: bytes, db: Session) -> ImportResult:
 
 def import_products_csv(csv_bytes: bytes, db: Session) -> ImportResult:
     result = ImportResult()
-    rows = _read_rows(csv_bytes)
+    rows = _read_rows(csv_bytes, {"name", "reference_no"})
     existing_refs = {p.reference_no.strip().lower() for p in db.query(Product).all()}
 
     for idx, row in enumerate(rows, start=2):
@@ -107,7 +131,7 @@ def import_products_csv(csv_bytes: bytes, db: Session) -> ImportResult:
 
 def import_stock_csv(csv_bytes: bytes, db: Session, user: User) -> ImportResult:
     result = ImportResult()
-    rows = _read_rows(csv_bytes)
+    rows = _read_rows(csv_bytes, {"reference_no", "lot_no", "skt"})
 
     products_by_ref = {p.reference_no.strip().lower(): p for p in db.query(Product).all()}
     hospitals_by_name = {h.name.strip().lower(): h for h in db.query(Hospital).all()}

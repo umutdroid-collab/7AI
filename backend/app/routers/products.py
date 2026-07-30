@@ -6,7 +6,7 @@ from app.database import get_db
 from app.deps import get_current_user, require_admin
 from app.models import Product, User
 from app.schemas import ProductBulkDelete, ProductCreate, ProductOut
-from app.services.bulk_import import import_products_csv
+from app.services.bulk_import import CsvFormatError, import_products_csv
 from app.services import audit
 
 router = APIRouter(prefix="/products", tags=["products"])
@@ -48,7 +48,10 @@ async def bulk_upload_products(
     if not (file.filename or "").lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Sadece CSV dosyası yükleyebilirsiniz")
     content = await file.read()
-    result = import_products_csv(content, db)
+    try:
+        result = import_products_csv(content, db)
+    except CsvFormatError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"created": result.created, "skipped": result.skipped, "errors": result.errors}
 
 

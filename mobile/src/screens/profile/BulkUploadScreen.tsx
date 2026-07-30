@@ -12,10 +12,42 @@ import {
 import { apiErrorMessage } from "../../api/client";
 import { colors, spacing } from "../../theme";
 
+/**
+ * Yüzlerce satırlık bir dosyada hataların neredeyse tamamı aynı birkaç
+ * sebepten kaynaklanır (örn. "ürün bulunamadı"). Hepsini tek tek listelemek
+ * yerine sebebe göre gruplayıp kaç satırı etkilediğini ve birkaç örnek satır
+ * numarasını gösteriyoruz - yalnızca "144 satırda hata var" demek kullanıcıya
+ * neyi düzelteceğini söylemiyordu.
+ */
+export function summarizeErrors(errors: { row?: number; file?: string; message: string }[]): string[] {
+  const groups = new Map<string, { count: number; samples: string[] }>();
+  for (const error of errors) {
+    // Mesajlardaki tırnak içindeki değerler satırdan satıra değişir
+    // ("Ref no 'A-1' bulunamadı"), gruplamak için sabitlenir.
+    const key = (error.message || "Bilinmeyen hata").replace(/'[^']*'/g, "'…'");
+    const group = groups.get(key) ?? { count: 0, samples: [] };
+    group.count += 1;
+    const label = error.row !== undefined ? `satır ${error.row}` : error.file;
+    if (label && group.samples.length < 3) group.samples.push(label);
+    groups.set(key, group);
+  }
+
+  return [...groups.entries()]
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 4)
+    .map(([message, group]) => {
+      const where = group.samples.length ? ` (örn. ${group.samples.join(", ")})` : "";
+      return `• ${message} — ${group.count} satır${where}`;
+    });
+}
+
 function resultMessage(result: BulkUploadResult): string {
   const parts = [`${result.created} kayıt eklendi`];
   if (result.skipped) parts.push(`${result.skipped} kayıt zaten vardı, atlandı`);
-  if (result.errors?.length) parts.push(`${result.errors.length} satırda hata var`);
+  if (result.errors?.length) {
+    parts.push(`\n${result.errors.length} satır eklenemedi:`);
+    parts.push(...summarizeErrors(result.errors));
+  }
   return parts.join("\n");
 }
 
@@ -82,7 +114,10 @@ function InvoiceUploadSection() {
       const files = result.assets.map((a) => ({ uri: a.uri, name: a.name || "fatura.pdf", webFile: a.file }));
       const uploadResult = await bulkUploadInvoices(files);
       const parts = [`${uploadResult.created} fatura yüklendi`];
-      if (uploadResult.errors?.length) parts.push(`${uploadResult.errors.length} dosyada sorun var, kontrol edin`);
+      if (uploadResult.errors?.length) {
+        parts.push(`\n${uploadResult.errors.length} dosyada sorun var:`);
+        parts.push(...summarizeErrors(uploadResult.errors));
+      }
       Alert.alert("Yükleme tamamlandı", parts.join("\n"));
     } catch (e) {
       Alert.alert("Hata", apiErrorMessage(e));

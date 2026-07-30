@@ -102,7 +102,7 @@ class StockItem(Base):
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
     lot_no: Mapped[str] = mapped_column(String(100), index=True)
     serial_no: Mapped[str | None] = mapped_column(String(100), index=True, nullable=True)
-    skt: Mapped[date] = mapped_column(Date)  # son kullanma tarihi
+    skt: Mapped[date | None] = mapped_column(Date, nullable=True)  # son kullanma tarihi (bilinmiyorsa boş)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
 
     status: Mapped[StockItemStatus] = mapped_column(Enum(StockItemStatus), default=StockItemStatus.IN_STOCK)
@@ -252,7 +252,11 @@ class SalesTarget(Base):
     __tablename__ = "sales_targets"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
+    # Ürüne bağlı olmayan ("manuel") hedefler için product_id boş bırakılır;
+    # o durumda hedefi title tanımlar ve ilerleme elle girilir.
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(250), nullable=True)
+    manual_progress: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
     assigned_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     target_quantity: Mapped[int] = mapped_column(Integer)
     period_start: Mapped[date] = mapped_column(Date)

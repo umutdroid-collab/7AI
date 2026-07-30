@@ -33,7 +33,7 @@ settings = get_settings()
 
 def _with_expiry(item: StockItem) -> StockItemOut:
     out = StockItemOut.model_validate(item)
-    out.days_to_expiry = (item.skt - date.today()).days
+    out.days_to_expiry = (item.skt - date.today()).days if item.skt else None
     return out
 
 
@@ -84,7 +84,8 @@ def _filtered_stock_query(
 
     if status == StockItemStatus.USED:
         return query.order_by(StockItem.updated_at.desc())
-    return query.order_by(StockItem.skt)
+    # SKT girilmemiş kayıtlar listenin başına değil sonuna düşsün.
+    return query.order_by(StockItem.skt.is_(None), StockItem.skt)
 
 
 @router.get("", response_model=list[StockItemOut])
@@ -155,8 +156,8 @@ def export_stock(
             item.product.sut_kodu or "",
             item.lot_no,
             item.serial_no or "",
-            item.skt.strftime("%d.%m.%Y"),
-            (item.skt - date.today()).days,
+            item.skt.strftime("%d.%m.%Y") if item.skt else "",
+            (item.skt - date.today()).days if item.skt else "",
             item.quantity,
             STATUS_LABELS.get(item.status, item.status.value),
             location,
@@ -239,7 +240,12 @@ async def bulk_upload_stock(
         result = import_stock_csv(content, db, user)
     except CsvFormatError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"created": result.created, "skipped": result.skipped, "errors": result.errors}
+    return {
+        "created": result.created,
+        "skipped": result.skipped,
+        "created_products": result.created_products,
+        "errors": result.errors,
+    }
 
 
 @router.post("/{stock_item_id}/transfer", response_model=StockItemOut)

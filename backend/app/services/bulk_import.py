@@ -19,6 +19,7 @@ from app.models import Hospital, MovementType, Product, StockItem, StockItemStat
 class ImportResult:
     created: int = 0
     skipped: int = 0
+    created_products: int = 0  # stok içe aktarımında otomatik açılan ürün sayısı
     errors: list[dict] = field(default_factory=list)
 
 
@@ -131,7 +132,7 @@ def import_products_csv(csv_bytes: bytes, db: Session) -> ImportResult:
 
 def import_stock_csv(csv_bytes: bytes, db: Session, user: User) -> ImportResult:
     result = ImportResult()
-    rows = _read_rows(csv_bytes, {"reference_no", "lot_no", "skt"})
+    rows = _read_rows(csv_bytes, {"reference_no", "lot_no"})
 
     products_by_ref = {p.reference_no.strip().lower(): p for p in db.query(Product).all()}
     hospitals_by_name = {h.name.strip().lower(): h for h in db.query(Hospital).all()}
@@ -141,19 +142,35 @@ def import_stock_csv(csv_bytes: bytes, db: Session, user: User) -> ImportResult:
         lot_no = row.get("lot_no", "")
         skt_raw = row.get("skt", "")
 
-        if not reference_no or not lot_no or not skt_raw:
-            result.errors.append({"row": idx, "message": "reference_no, lot_no ve skt zorunludur"})
+        if not reference_no or not lot_no:
+            result.errors.append({"row": idx, "message": "reference_no ve lot_no zorunludur"})
             continue
 
+        # Ürün listesinde yoksa otomatik oluştur. Varsa ONU kullan: ürün adı
+        # her zaman ürün listesindeki kayıttan gelir, stok dosyasındaki ad
+        # farklı yazılmış olsa bile - böylece aynı ref no tek bir ürün adıyla
+        # görünür.
         product = products_by_ref.get(reference_no.strip().lower())
         if not product:
-            result.errors.append({"row": idx, "message": f"Ref no '{reference_no}' ile eşleşen ürün bulunamadı"})
-            continue
+            product = Product(
+                name=row.get("name") or row.get("product_name") or reference_no,
+                reference_no=reference_no,
+                ubb_no=row.get("ubb_no") or None,
+                sut_kodu=row.get("sut_kodu") or None,
+            )
+            db.add(product)
+            db.flush()
+            products_by_ref[reference_no.strip().lower()] = product
+            result.created_products += 1
 
-        skt = _parse_flexible_date(skt_raw)
-        if not skt:
-            result.errors.append({"row": idx, "message": f"SKT tarihi okunamadı: '{skt_raw}'"})
-            continue
+        # SKT zorunlu değil: bilinmiyorsa boş bırakılabilir. Ama yazılmışsa ve
+        # okunamıyorsa sessizce yok saymak yerine hata verilir.
+        skt = None
+        if skt_raw:
+            skt = _parse_flexible_date(skt_raw)
+            if not skt:
+                result.errors.append({"row": idx, "message": f"SKT tarihi okunamadı: '{skt_raw}'"})
+                continue
 
         hospital_name = row.get("hospital_name", "")
         hospital = None

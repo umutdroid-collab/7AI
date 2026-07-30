@@ -216,7 +216,7 @@ export async function createStockItem(payload: {
   product_id: number;
   lot_no: string;
   serial_no?: string;
-  skt: string;
+  skt?: string;
   quantity?: number;
   hospital_id?: number | null;
 }) {
@@ -427,7 +427,8 @@ export async function fetchSalesTargets() {
 }
 
 export async function createSalesTarget(payload: {
-  product_id: number;
+  product_id?: number | null;
+  title?: string;
   assigned_user_id?: number | null;
   target_quantity: number;
   period_start: string;
@@ -435,6 +436,19 @@ export async function createSalesTarget(payload: {
   note?: string;
 }) {
   const { data } = await api.post<SalesTarget>("/targets", payload);
+  return data;
+}
+
+export async function adjustSalesTargetProgress(id: number, delta: number) {
+  const { data } = await api.post<SalesTarget>(`/targets/${id}/progress`, { delta });
+  return data;
+}
+
+export async function updateSalesTarget(
+  id: number,
+  payload: { title?: string; target_quantity?: number; note?: string; assigned_user_id?: number | null }
+) {
+  const { data } = await api.patch<SalesTarget>(`/targets/${id}`, payload);
   return data;
 }
 

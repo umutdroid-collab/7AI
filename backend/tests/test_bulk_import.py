@@ -11,17 +11,18 @@ def upload_csv(client, admin, path, content: str, filename="veri.csv"):
     )
 
 
-def test_stock_import_without_products_reports_missing_product(client, admin):
-    """En sık senaryo: ürünler yüklenmeden stok yüklenmeye çalışılıyor -
-    her satır aynı sebeple düşer ve sebep açıkça söylenmeli."""
+def test_stock_import_without_products_creates_them(client, admin):
+    """Ürünler önceden yüklenmemişse stok içe aktarımı artık durmuyor;
+    eksik ürünler ref no'dan otomatik açılıyor."""
     csv = "reference_no,lot_no,skt\nREF-1,LOT1,01.01.2027\nREF-2,LOT2,02.02.2027\n"
     r = upload_csv(client, admin, "/stock/bulk-upload", csv)
     assert r.status_code == 200
     body = r.json()
-    assert body["created"] == 0
-    assert len(body["errors"]) == 2
-    assert "ürün bulunamadı" in body["errors"][0]["message"]
-    assert body["errors"][0]["row"] == 2  # başlık 1. satır
+    assert body["created"] == 2
+    assert body["created_products"] == 2
+    assert body["errors"] == []
+    # Ad sütunu yoksa ref no ürün adı olarak kullanılır - kullanıcı sonradan düzeltebilir.
+    assert sorted(p["reference_no"] for p in client.get("/products", headers=admin).json()) == ["REF-1", "REF-2"]
 
 
 def test_stock_import_reports_unknown_hospital(client, admin):

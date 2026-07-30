@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator
 
 from app.models import InvoiceStatus, MovementType, StockItemStatus, UserRole
 
@@ -91,7 +91,7 @@ class StockItemCreate(BaseModel):
     product_id: int
     lot_no: str
     serial_no: str | None = None
-    skt: date
+    skt: date | None = None  # bilinmiyorsa boş bırakılabilir
     quantity: int = 1
     hospital_id: int | None = None  # None = depoda
 
@@ -101,7 +101,7 @@ class StockItemOut(BaseModel):
     product: ProductOut
     lot_no: str
     serial_no: str | None
-    skt: date
+    skt: date | None
     quantity: int
     status: StockItemStatus
     hospital: HospitalOut | None
@@ -231,12 +231,34 @@ class ClinicalDocumentOut(BaseModel):
 # --- Sales targets (Personel Takip) ---
 
 class SalesTargetCreate(BaseModel):
-    product_id: int
+    # Ürüne bağlı hedeflerde product_id, serbest ("manuel") hedeflerde title
+    # verilir; ilerleme manuel hedeflerde elle girilir.
+    product_id: int | None = None
+    title: str | None = None
     assigned_user_id: int | None = None  # None = tüm ekip için ortak hedef
     target_quantity: int
     period_start: date
     period_end: date
     note: str | None = None
+
+    @model_validator(mode="after")
+    def require_product_or_title(self):
+        if self.product_id is None and not (self.title or "").strip():
+            raise ValueError("Ürün seçin ya da hedef için bir başlık yazın")
+        return self
+
+
+class SalesTargetUpdate(BaseModel):
+    title: str | None = None
+    assigned_user_id: int | None = None
+    target_quantity: int | None = None
+    period_start: date | None = None
+    period_end: date | None = None
+    note: str | None = None
+
+
+class SalesTargetProgressAdjust(BaseModel):
+    delta: int  # +1 / -1 gibi; toplam ilerleme negatife düşürülmez
 
 
 class SalesTargetContributor(BaseModel):
@@ -247,7 +269,9 @@ class SalesTargetContributor(BaseModel):
 
 class SalesTargetOut(BaseModel):
     id: int
-    product: ProductOut
+    product: ProductOut | None
+    title: str | None
+    manual_progress: int = 0
     assigned_user: UserOut | None
     target_quantity: int
     period_start: date

@@ -2,7 +2,7 @@ import React, { useCallback, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import Alert from "../../utils/alert";
-import { deleteSalesTarget, fetchSalesTargets } from "../../api/services";
+import { adjustSalesTargetProgress, deleteSalesTarget, fetchSalesTargets } from "../../api/services";
 import { SalesTarget } from "../../types";
 import { colors, spacing } from "../../theme";
 import { apiErrorMessage } from "../../api/client";
@@ -14,11 +14,26 @@ function formatDate(iso: string): string {
   return `${d}.${m}.${y}`;
 }
 
-function TargetCard({ target, onDeleted }: { target: SalesTarget; onDeleted: () => void }) {
+function TargetCard({ target, onChanged }: { target: SalesTarget; onChanged: () => void }) {
   const { user } = useAuth();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isAdjusting, setIsAdjusting] = useState(false);
   const ratio = target.target_quantity > 0 ? Math.min(target.progress / target.target_quantity, 1) : 0;
   const isComplete = target.progress >= target.target_quantity;
+  // Ürüne bağlı hedeflerde ürün adı, serbest hedeflerde başlık gösterilir.
+  const heading = target.product ? target.product.name : target.title || "Hedef";
+
+  async function handleAdjust(delta: number) {
+    setIsAdjusting(true);
+    try {
+      await adjustSalesTargetProgress(target.id, delta);
+      onChanged();
+    } catch (e) {
+      Alert.alert("Hata", apiErrorMessage(e));
+    } finally {
+      setIsAdjusting(false);
+    }
+  }
 
   function handleDelete() {
     Alert.alert("Hedefi sil", "Bu hedef kalıcı olarak silinecek. Emin misiniz?", [
@@ -30,7 +45,7 @@ function TargetCard({ target, onDeleted }: { target: SalesTarget; onDeleted: () 
           setIsDeleting(true);
           try {
             await deleteSalesTarget(target.id);
-            onDeleted();
+            onChanged();
           } catch (e) {
             Alert.alert("Hata", apiErrorMessage(e));
           } finally {
@@ -45,7 +60,7 @@ function TargetCard({ target, onDeleted }: { target: SalesTarget; onDeleted: () 
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <Text style={styles.productName} numberOfLines={2}>
-          {target.product.name}
+          {heading}
         </Text>
         <View style={[styles.scopeBadge, target.assigned_user ? styles.scopeBadgePerson : styles.scopeBadgeTeam]}>
           <Text style={styles.scopeBadgeText}>{target.assigned_user ? target.assigned_user.full_name : "Tüm Ekip"}</Text>
@@ -58,6 +73,28 @@ function TargetCard({ target, onDeleted }: { target: SalesTarget; onDeleted: () 
       <Text style={styles.progressText}>
         {target.progress} / {target.target_quantity} adet {isComplete ? "🎉 Hedef tamamlandı!" : ""}
       </Text>
+
+      {user?.role === "admin" && (
+        <View style={styles.adjustRow}>
+          <TouchableOpacity
+            style={styles.adjustButton}
+            onPress={() => handleAdjust(-1)}
+            disabled={isAdjusting || target.progress === 0}
+          >
+            <Text style={styles.adjustButtonText}>−</Text>
+          </TouchableOpacity>
+          {isAdjusting ? (
+            <ActivityIndicator color={colors.primary} style={styles.adjustLabel} />
+          ) : (
+            <Text style={styles.adjustLabel}>
+              elle giriş{target.manual_progress ? ` (+${target.manual_progress})` : ""}
+            </Text>
+          )}
+          <TouchableOpacity style={styles.adjustButton} onPress={() => handleAdjust(1)} disabled={isAdjusting}>
+            <Text style={styles.adjustButtonText}>+</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <Text style={styles.period}>
         {formatDate(target.period_start)} – {formatDate(target.period_end)}
@@ -124,7 +161,7 @@ export default function PersonelTakipScreen({ navigation }: any) {
         ) : targets.length === 0 ? (
           <Text style={styles.empty}>Henüz hedef tanımlanmadı</Text>
         ) : (
-          targets.map((t) => <TargetCard key={t.id} target={t} onDeleted={load} />)
+          targets.map((t) => <TargetCard key={t.id} target={t} onChanged={load} />)
         )}
       </ScrollView>
     </View>
@@ -164,6 +201,25 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: "100%", backgroundColor: colors.primary, borderRadius: 6 },
   progressFillComplete: { backgroundColor: colors.success },
+  adjustRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing(1.5),
+    marginTop: spacing(1.25),
+  },
+  adjustButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  adjustButtonText: { color: colors.text, fontSize: 22, fontWeight: "700", marginTop: -2 },
+  adjustLabel: { color: colors.textMuted, fontSize: 12, minWidth: 110, textAlign: "center" },
   progressText: { color: colors.text, fontSize: 13, fontWeight: "600", marginTop: spacing(0.75) },
   period: { color: colors.textMuted, fontSize: 12, marginTop: spacing(0.5) },
   note: { color: colors.textMuted, fontSize: 12, marginTop: spacing(0.5), fontStyle: "italic" },

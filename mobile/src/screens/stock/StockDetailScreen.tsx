@@ -108,7 +108,7 @@ export default function StockDetailScreen({ route, navigation }: any) {
         <InfoRow label="SUT kodu" value={item.product.sut_kodu || "-"} />
         <InfoRow label="Lot numarası" value={item.lot_no} />
         <InfoRow label="Seri numarası" value={item.serial_no || "-"} />
-        <InfoRow label="SKT" value={item.skt} />
+        <InfoRow label="SKT" value={item.skt || "Belirtilmemiş"} />
         <InfoRow label="Miktar" value={String(item.quantity)} />
         <InfoRow label="Mevcut konum" value={locationLabel(item)} />
         <InfoRow label="Durum" value={item.status} />

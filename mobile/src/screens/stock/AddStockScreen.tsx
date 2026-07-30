@@ -51,11 +51,12 @@ export default function AddStockScreen({ navigation, route }: any) {
       Alert.alert("Eksik bilgi", "Lütfen bir ürün seçin");
       return;
     }
-    if (!lotNo || !skt) {
-      Alert.alert("Eksik bilgi", "Lot numarası ve SKT zorunludur");
+    if (!lotNo) {
+      Alert.alert("Eksik bilgi", "Lot numarası zorunludur");
       return;
     }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(skt)) {
+    // SKT opsiyonel; ama girildiyse formatı doğru olmalı.
+    if (skt && !/^\d{4}-\d{2}-\d{2}$/.test(skt)) {
       Alert.alert("Geçersiz tarih", "SKT tarihini YYYY-AA-GG formatında girin (örn. 2026-12-31)");
       return;
     }
@@ -65,7 +66,7 @@ export default function AddStockScreen({ navigation, route }: any) {
         product_id: selectedProduct.id,
         lot_no: lotNo,
         serial_no: serialNo || undefined,
-        skt,
+        skt: skt || undefined,
         quantity: Number(quantity) || 1,
         hospital_id: selectedHospitalId,
       });
@@ -123,12 +124,12 @@ export default function AddStockScreen({ navigation, route }: any) {
       <Text style={styles.label}>Seri numarası (opsiyonel)</Text>
       <TextInput style={styles.input} value={serialNo} onChangeText={setSerialNo} placeholderTextColor={colors.textMuted} />
 
-      <Text style={styles.label}>SKT (YYYY-AA-GG)</Text>
+      <Text style={styles.label}>SKT (YYYY-AA-GG) — opsiyonel</Text>
       <TextInput
         style={styles.input}
         value={skt}
         onChangeText={setSkt}
-        placeholder="2026-12-31"
+        placeholder="2026-12-31 (bilinmiyorsa boş bırakın)"
         placeholderTextColor={colors.textMuted}
       />
 

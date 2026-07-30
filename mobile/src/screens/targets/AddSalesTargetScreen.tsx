@@ -21,7 +21,13 @@ function currentMonthRange(): { start: string; end: string } {
   return { start: toIsoDate(start), end: toIsoDate(end) };
 }
 
+type TargetMode = "product" | "manual";
+
 export default function AddSalesTargetScreen({ navigation }: any) {
+  // Hedef ya bir ürüne bağlanır (ilerleme stok kullanımından otomatik sayılır)
+  // ya da serbest yazılır (ilerlemeyi yönetici elle girer).
+  const [mode, setMode] = useState<TargetMode>("product");
+  const [manualTitle, setManualTitle] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [productQuery, setProductQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -54,8 +60,12 @@ export default function AddSalesTargetScreen({ navigation }: any) {
   }, [productQuery]);
 
   async function handleSubmit() {
-    if (!selectedProduct) {
+    if (mode === "product" && !selectedProduct) {
       Alert.alert("Eksik bilgi", "Lütfen bir ürün seçin");
+      return;
+    }
+    if (mode === "manual" && !manualTitle.trim()) {
+      Alert.alert("Eksik bilgi", "Hedef için bir başlık yazın");
       return;
     }
     const qty = Number(quantity);
@@ -70,7 +80,8 @@ export default function AddSalesTargetScreen({ navigation }: any) {
     setIsSubmitting(true);
     try {
       await createSalesTarget({
-        product_id: selectedProduct.id,
+        product_id: mode === "product" ? selectedProduct!.id : null,
+        title: mode === "manual" ? manualTitle.trim() : undefined,
         assigned_user_id: selectedEmployee?.id ?? null,
         target_quantity: qty,
         period_start: periodStart,
@@ -87,6 +98,44 @@ export default function AddSalesTargetScreen({ navigation }: any) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing(2) }} keyboardShouldPersistTaps="handled">
+      <View style={styles.modeRow}>
+        <TouchableOpacity
+          style={[styles.modeButton, mode === "product" && styles.modeButtonActive]}
+          onPress={() => setMode("product")}
+        >
+          <Text style={[styles.modeButtonText, mode === "product" && styles.modeButtonTextActive]}>
+            Ürüne Bağlı
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.modeButton, mode === "manual" && styles.modeButtonActive]}
+          onPress={() => setMode("manual")}
+        >
+          <Text style={[styles.modeButtonText, mode === "manual" && styles.modeButtonTextActive]}>
+            Serbest Hedef
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.modeHint}>
+        {mode === "product"
+          ? "İlerleme, ürün 'kullanıldı' olarak işaretlendikçe otomatik sayılır."
+          : "İlerlemeyi Hedefler ekranındaki + / − düğmeleriyle siz girersiniz."}
+      </Text>
+
+      {mode === "manual" ? (
+        <>
+          <Text style={styles.label}>Hedef başlığı</Text>
+          <TextInput
+            style={styles.input}
+            value={manualTitle}
+            onChangeText={setManualTitle}
+            placeholder="örn. 10 hastane ziyareti"
+            placeholderTextColor={colors.textMuted}
+          />
+        </>
+      ) : (
+      <>
       <Text style={styles.label}>Ürün</Text>
           {selectedProduct ? (
             <TouchableOpacity style={styles.selectedBox} onPress={() => setSelectedProduct(null)}>
@@ -113,8 +162,10 @@ export default function AddSalesTargetScreen({ navigation }: any) {
               ))}
             </>
           )}
+      </>
+      )}
 
-          <Text style={styles.label}>Kime atanacak?</Text>
+      <Text style={styles.label}>Kime atanacak?</Text>
           <View style={styles.scopeRow}>
             <TouchableOpacity
               style={[styles.scopeChip, !selectedEmployee && styles.scopeChipActive]}
@@ -177,6 +228,20 @@ export default function AddSalesTargetScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  modeRow: { flexDirection: "row", gap: spacing(1), marginBottom: spacing(1) },
+  modeButton: {
+    flex: 1,
+    paddingVertical: spacing(1.25),
+    borderRadius: 10,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  modeButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  modeButtonText: { color: colors.textMuted, fontSize: 13, fontWeight: "700" },
+  modeButtonTextActive: { color: "#0f172a" },
+  modeHint: { color: colors.textMuted, fontSize: 12, marginBottom: spacing(1.5), lineHeight: 17 },
   container: { flex: 1, backgroundColor: colors.background },
   label: { color: colors.textMuted, fontSize: 13, marginBottom: spacing(1), marginTop: spacing(1.5) },
   input: {

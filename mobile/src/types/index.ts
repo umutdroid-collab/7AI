@@ -36,7 +36,7 @@ export interface StockItem {
   product: Product;
   lot_no: string;
   serial_no: string | null;
-  skt: string;
+  skt: string | null;
   quantity: number;
   status: StockItemStatus;
   hospital: Hospital | null;
@@ -132,7 +132,9 @@ export interface SalesTargetContributor {
 
 export interface SalesTarget {
   id: number;
-  product: Product;
+  product: Product | null;
+  title: string | null;
+  manual_progress: number;
   assigned_user: User | null;
   target_quantity: number;
   period_start: string;

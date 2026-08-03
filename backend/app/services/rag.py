@@ -99,14 +99,25 @@ def _gather_sources(question: str, timings: dict) -> tuple[list[dict], list[dict
     süreleri toplanıyordu. PubMed dalı ayrıca kendi içinde bir Qwen çevirisi
     + iki NCBI isteği barındırdığı için asıl bekleme oradaydı.
     """
+    def pubmed_branch() -> list[dict]:
+        # Kullanılan İngilizce sorgu teşhis için kritik: PubMed boş dönüyorsa
+        # sebep genelde bağlantı değil, çevirinin ürettiği terimlerdir.
+        terms = _cached_search_terms(question)
+        timings["pubmed_sorgusu"] = terms
+        return search_pubmed(terms, max_results=5)
+
     with ThreadPoolExecutor(max_workers=2) as pool:
         chunks_task = pool.submit(
             _timed, timings, "dokuman_arama_ms", lambda: query_relevant_chunks(question, n_results=5)
         )
-        pubmed_task = pool.submit(
-            _timed, timings, "pubmed_ms", lambda: search_pubmed(_cached_search_terms(question), max_results=5)
-        )
-        return chunks_task.result(), pubmed_task.result()
+        pubmed_task = pool.submit(_timed, timings, "pubmed_ms", pubmed_branch)
+        chunks, pubmed_results = chunks_task.result(), pubmed_task.result()
+
+    # "Kaynak bulunamadı" ile "kaynak bulundu ama model yetersiz gördü"
+    # ayrımı yanıttan anlaşılmıyordu; ikisi de sıfır kaynakla dönüyor.
+    timings["dokuman_parca_sayisi"] = len(chunks)
+    timings["pubmed_sonuc_sayisi"] = len(pubmed_results)
+    return chunks, pubmed_results
 
 
 def answer_question(

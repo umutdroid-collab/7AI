@@ -57,7 +57,13 @@ def test_timings_cover_every_stage(client, admin, monkeypatch):
 
     assert was_answered
     assert len(sources) == 2  # bir doküman + bir PubMed kaynağı
-    assert set(timings) == {"dokuman_arama_ms", "pubmed_ms", "qwen_cevap_ms", "toplam_ms"}
+    assert {k for k in timings if k.endswith("_ms")} == {
+        "dokuman_arama_ms", "pubmed_ms", "qwen_cevap_ms", "toplam_ms"
+    }
+    # Kaynak sayıları ve PubMed'e giden İngilizce sorgu da kaydedilmeli.
+    assert timings["dokuman_parca_sayisi"] == 1
+    assert timings["pubmed_sonuc_sayisi"] == 1
+    assert timings["pubmed_sorgusu"] == "aspirin cardiovascular"
 
 
 def test_document_search_and_pubmed_run_in_parallel(monkeypatch):
@@ -135,4 +141,7 @@ def test_timing_diagnostics_endpoint_is_admin_only(client, admin, employee, monk
     assert body["was_answered"] is True
     assert body["source_count"] == 2
     assert body["timings_ms"]["toplam_ms"] >= 0
+    assert all(k.endswith("_ms") for k in body["timings_ms"])
+    assert body["kaynaklar"]["dokuman_parca_sayisi"] == 1
+    assert body["kaynaklar"]["pubmed_sonuc_sayisi"] == 1
     assert "model" in body

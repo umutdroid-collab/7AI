@@ -78,10 +78,14 @@ def timing_diagnostics(
     - qwen_cevap_ms: asıl cevabı üreten Qwen çağrısı
     - toplam_ms: uçtan uca
     """
-    timings: dict = {}
-    answer, sources, was_answered = answer_question(db, payload.question, user.id, timings)
+    diagnostics: dict = {}
+    answer, sources, was_answered = answer_question(db, payload.question, user.id, diagnostics)
     return {
-        "timings_ms": timings,
+        "timings_ms": {k: v for k, v in diagnostics.items() if k.endswith("_ms")},
+        # Kaç kaynak bulunduğu ve PubMed'e hangi İngilizce sorgunun gittiği:
+        # cevap "ilgisiz soru" ile dönerse sebebin kaynak yokluğu mu yoksa
+        # modelin kaynakları yetersiz görmesi mi olduğunu bu ayırt eder.
+        "kaynaklar": {k: v for k, v in diagnostics.items() if not k.endswith("_ms")},
         "was_answered": was_answered,
         "source_count": len(sources),
         "answer_length": len(answer),

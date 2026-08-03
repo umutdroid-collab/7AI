@@ -84,6 +84,15 @@ bir sorgu sıfır sonuç döndürüyordu (canlıda ölçüldü). Çeviri artık 
 çağrıda iki satır üretiyor: spesifik sorgu + marka içermeyen, mekanizma/klinik
 durum düzeyinde genel sorgu. İlki boş dönerse ikinciye düşülür.
 
+**Embedding modeli yalnızca İngilizce, bu yüzden vektör araması İngilizce
+sorguyla yapılır.** Chroma'nın varsayılanı ONNX all-MiniLM-L6-v2 ve Türkçe
+bilmiyor: aynı İngilizce dokümana Türkçe soruyla olan uzaklık 1.75-1.81
+çıkarken İngilizce soruyla 0.49-0.70 çıkıyor — alakasız bir soru ise 2.02
+(yerel ölçüm). Yani Türkçe soruda doküman araması pratikte rastgele parça
+döndürüyordu. PubMed için zaten üretilen çeviri artık vektör aramasında da
+kullanılıyor (`dokuman_sorgusu`); ek model çağrısı yok, çeviri iki dalın da
+önüne alındı. Çeviri koparsa Türkçe soruya düşülür.
+
 **Vektör aramasında alaka eşiği yok.** `query_relevant_chunks` her zaman "en
 yakın 5"i döner; konuyla tamamen ilgisiz bir soruda bile 5 parça gelir. Yani
 `dokuman_parca_sayisi: 5` "ilgili kaynak bulundu" demek DEĞİL — model sonra

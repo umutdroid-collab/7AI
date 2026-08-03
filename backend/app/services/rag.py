@@ -44,6 +44,10 @@ PUBMED_QUERY_SYSTEM_PROMPT = (
     "PubMed terimleri VE (AND) mantığıyla arar ve ticari marka adlarını "
     "neredeyse hiç indekslemez; markayı içeren dar bir sorgu sıfır sonuç "
     "döndürür. 2. satır tam da bunun için var.\n"
+    "ÇOK ÖNEMLİ: Ürünün ne olduğunu bilmiyorsan etken maddesini TAHMİN ETME. "
+    "Yanlış tahmin, konuyla ilgisiz yayınların kaynak olarak gösterilmesine "
+    "yol açar. Emin değilsen 2. satıra sadece sorudaki klinik durumu ve "
+    "ölçütü yaz.\n"
     "SADECE terimleri yaz; açıklama, numara, noktalama veya tırnak ekleme. "
     "Soru tıbbi bir ürün/hastalık/klinik konu içermiyorsa iki satırı da boş "
     "bırak."
@@ -112,15 +116,25 @@ def _build_context(chunks: list[dict], pubmed_results: list[dict]) -> str:
 def _gather_sources(question: str, timings: dict) -> tuple[list[dict], list[dict]]:
     """Yerel doküman araması ile PubMed aramasını EŞ ZAMANLI çalıştırır.
 
-    İkisi birbirinden tamamen bağımsız ama sırayla çalıştırıldıklarında
-    süreleri toplanıyordu. PubMed dalı ayrıca kendi içinde bir Qwen çevirisi
-    + iki NCBI isteği barındırdığı için asıl bekleme oradaydı.
+    İkisi birbirinden bağımsız ama sırayla çalıştırıldıklarında süreleri
+    toplanıyordu. Çeviri ikisinin de ÖNÜNDE duruyor (aşağıdaki nedenle),
+    ondan sonrası paralel.
     """
+    # Çeviri artık sadece PubMed için değil: embedding modeli (MiniLM) yalnızca
+    # İngilizce. Türkçe soruyla aratınca İngilizce dokümanlara olan uzaklık,
+    # konuyla TAMAMEN ilgisiz bir sorununkiyle aynı çıkıyor (ölçüldü: TR 1.75-1.81
+    # vs EN 0.49-0.70, alakasız 2.02). Yani doküman araması Türkçe sorularda
+    # pratikte rastgele parça döndürüyordu. Aynı çeviriyi vektör aramasında da
+    # kullanıyoruz - ek bir model çağrısı yok.
+    specific, broad = _timed(timings, "ceviri_ms", lambda: _cached_search_terms(question))
+    timings["pubmed_sorgusu"] = specific
+
+    # Çeviri başarısız olduysa _pubmed_search_terms orijinal soruyu döndürür;
+    # o durumda eskisi gibi Türkçe aratılır (daha kötü değil).
+    document_query = specific or question
+    timings["dokuman_sorgusu"] = document_query
+
     def pubmed_branch() -> list[dict]:
-        # Kullanılan İngilizce sorgu teşhis için kritik: PubMed boş dönüyorsa
-        # sebep genelde bağlantı değil, çevirinin ürettiği terimlerdir.
-        specific, broad = _cached_search_terms(question)
-        timings["pubmed_sorgusu"] = specific
         results = search_pubmed(specific, max_results=5)
         if not results and broad and broad != specific:
             # Dar sorgu (genelde marka adı yüzünden) sıfır döndü; mekanizma
@@ -131,7 +145,8 @@ def _gather_sources(question: str, timings: dict) -> tuple[list[dict], list[dict
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         chunks_task = pool.submit(
-            _timed, timings, "dokuman_arama_ms", lambda: query_relevant_chunks(question, n_results=5)
+            _timed, timings, "dokuman_arama_ms",
+            lambda: query_relevant_chunks(document_query, n_results=5),
         )
         pubmed_task = pool.submit(_timed, timings, "pubmed_ms", pubmed_branch)
         chunks, pubmed_results = chunks_task.result(), pubmed_task.result()

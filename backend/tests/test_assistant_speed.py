@@ -58,7 +58,7 @@ def test_timings_cover_every_stage(client, admin, monkeypatch):
     assert was_answered
     assert len(sources) == 2  # bir doküman + bir PubMed kaynağı
     assert {k for k in timings if k.endswith("_ms")} == {
-        "dokuman_arama_ms", "pubmed_ms", "qwen_cevap_ms", "toplam_ms"
+        "ceviri_ms", "dokuman_arama_ms", "pubmed_ms", "qwen_cevap_ms", "toplam_ms"
     }
     # Kaynak sayıları, uzaklıklar ve PubMed'e giden İngilizce sorgu da kaydedilmeli.
     assert timings["dokuman_parca_sayisi"] == 1
@@ -120,6 +120,41 @@ def test_falls_back_to_broader_query_when_specific_one_finds_nothing(monkeypatch
     assert searched == ["Efferon Neo SOFA score", "hemoperfusion sepsis"]
     assert len(pubmed_results) == 1
     assert timings["pubmed_genel_sorgu"] == "hemoperfusion sepsis"
+
+
+def test_document_search_uses_the_english_translation(monkeypatch):
+    """Embedding modeli (MiniLM) yalnızca İngilizce: Türkçe soruyla aratınca
+    ilgili dokümana olan uzaklık, alakasız bir sorununkiyle aynı çıkıyordu.
+    PubMed için zaten ürettiğimiz çeviri vektör aramasında da kullanılmalı."""
+    searched = []
+    monkeypatch.setattr(
+        rag, "query_relevant_chunks", lambda q, n_results=5: searched.append(q) or []
+    )
+    monkeypatch.setattr(rag, "search_pubmed", lambda q, max_results=5: [])
+    monkeypatch.setattr(rag, "ask_qwen", lambda *a, **k: "septic shock complications\nsepsis")
+
+    timings = {}
+    rag._gather_sources("septik şokun sebep olduğu problemler nelerdir", timings)
+
+    assert searched == ["septic shock complications"]
+    assert timings["dokuman_sorgusu"] == "septic shock complications"
+
+
+def test_document_search_falls_back_to_turkish_when_translation_fails(monkeypatch):
+    """Çeviri koparsa arama yine yapılmalı - eskisinden kötü olmamalı."""
+    searched = []
+    monkeypatch.setattr(
+        rag, "query_relevant_chunks", lambda q, n_results=5: searched.append(q) or []
+    )
+    monkeypatch.setattr(rag, "search_pubmed", lambda q, max_results=5: [])
+
+    def broken_qwen(*a, **k):
+        raise RuntimeError("model ulaşılamıyor")
+
+    monkeypatch.setattr(rag, "ask_qwen", broken_qwen)
+
+    rag._gather_sources("septik şok soru", {})
+    assert searched == ["septik şok soru"]
 
 
 def test_no_second_pubmed_call_when_specific_query_succeeds(monkeypatch):

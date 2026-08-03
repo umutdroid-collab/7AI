@@ -36,7 +36,7 @@ def _stub(monkeypatch, *, doc_delay=0.0, pubmed_delay=0.0, qwen_delay=0.0, chunk
     def fake_qwen(system_prompt, user_prompt, temperature=0.2, max_tokens=None):
         time.sleep(qwen_delay)
         if system_prompt is rag.PUBMED_QUERY_SYSTEM_PROMPT:
-            return "aspirin cardiovascular"
+            return "aspirin cardiovascular\nantiplatelet therapy"
         return "Cevap [Kaynak: c.pdf, sayfa 1]"
 
     monkeypatch.setattr(rag, "query_relevant_chunks", fake_chunks)
@@ -60,10 +60,11 @@ def test_timings_cover_every_stage(client, admin, monkeypatch):
     assert {k for k in timings if k.endswith("_ms")} == {
         "dokuman_arama_ms", "pubmed_ms", "qwen_cevap_ms", "toplam_ms"
     }
-    # Kaynak sayıları ve PubMed'e giden İngilizce sorgu da kaydedilmeli.
+    # Kaynak sayıları, uzaklıklar ve PubMed'e giden İngilizce sorgu da kaydedilmeli.
     assert timings["dokuman_parca_sayisi"] == 1
     assert timings["pubmed_sonuc_sayisi"] == 1
     assert timings["pubmed_sorgusu"] == "aspirin cardiovascular"
+    assert timings["en_yakin_dokuman_uzakligi"] == 0.1
 
 
 def test_document_search_and_pubmed_run_in_parallel(monkeypatch):
@@ -87,12 +88,57 @@ def test_pubmed_translation_is_cached(monkeypatch):
 
     def counting_qwen(system_prompt, user_prompt, temperature=0.2, max_tokens=None):
         calls.append(system_prompt)
-        return "aspirin"
+        return "aspirin\nantiplatelet"
 
     monkeypatch.setattr(rag, "ask_qwen", counting_qwen)
-    rag._cached_search_terms("aynı soru")
+    assert rag._cached_search_terms("aynı soru") == ("aspirin", "antiplatelet")
     rag._cached_search_terms("aynı soru")
     assert len(calls) == 1  # aynı soru ikinci kez modele gitmemeli
+
+
+def test_falls_back_to_broader_query_when_specific_one_finds_nothing(monkeypatch):
+    """PubMed VE mantığıyla arıyor ve ticari marka adlarını indekslemiyor;
+    "Efferon Neo SOFA score" gibi dar bir sorgu sıfır sonuç döndürüyordu."""
+    searched = []
+
+    def fake_search(query, max_results=5):
+        searched.append(query)
+        # Marka adı içeren dar sorgu boş, mekanizma düzeyindeki sorgu dolu.
+        return [] if "Efferon" in query else [
+            {"pmid": "9", "title": "T", "journal": "J", "year": "2024", "authors": "A", "url": "u"}
+        ]
+
+    monkeypatch.setattr(rag, "search_pubmed", fake_search)
+    monkeypatch.setattr(rag, "query_relevant_chunks", lambda q, n_results=5: [])
+    monkeypatch.setattr(
+        rag, "ask_qwen", lambda *a, **k: "Efferon Neo SOFA score\nhemoperfusion sepsis"
+    )
+
+    timings = {}
+    _, pubmed_results = rag._gather_sources("efferon neo sofa skorunu düşürür mü", timings)
+
+    assert searched == ["Efferon Neo SOFA score", "hemoperfusion sepsis"]
+    assert len(pubmed_results) == 1
+    assert timings["pubmed_genel_sorgu"] == "hemoperfusion sepsis"
+
+
+def test_no_second_pubmed_call_when_specific_query_succeeds(monkeypatch):
+    """Yedek sorgu ekstra bir NCBI turu demek; ilki sonuç verdiyse yapılmamalı."""
+    searched = []
+
+    def fake_search(query, max_results=5):
+        searched.append(query)
+        return [{"pmid": "1", "title": "T", "journal": "J", "year": "2024", "authors": "A", "url": "u"}]
+
+    monkeypatch.setattr(rag, "search_pubmed", fake_search)
+    monkeypatch.setattr(rag, "query_relevant_chunks", lambda q, n_results=5: [])
+    monkeypatch.setattr(rag, "ask_qwen", lambda *a, **k: "aspirin cardiovascular\nantiplatelet")
+
+    timings = {}
+    rag._gather_sources("aspirin sorusu", timings)
+
+    assert searched == ["aspirin cardiovascular"]
+    assert "pubmed_genel_sorgu" not in timings
 
 
 def test_total_time_recorded_even_when_no_sources(monkeypatch):

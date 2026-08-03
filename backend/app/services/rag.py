@@ -35,10 +35,18 @@ KURALLAR:
 """
 
 PUBMED_QUERY_SYSTEM_PROMPT = (
-    "Aşağıdaki Türkçe soruyu PubMed'de arama yapmak üzere İngilizce, kısa "
-    "anahtar kelimelere çevir (2-6 kelime). SADECE anahtar kelimeleri yaz; "
-    "açıklama, noktalama işareti veya tırnak ekleme. Soru tıbbi bir ürün/"
-    "hastalık/klinik konu içermiyorsa boş bırak."
+    "Aşağıdaki Türkçe soruyu PubMed'de arama yapmak üzere İngilizce anahtar "
+    "kelimelere çevir. TAM İKİ SATIR yaz:\n"
+    "1. satır: soruya en yakın spesifik terimler (2-6 kelime).\n"
+    "2. satır: daha GENEL terimler (2-4 kelime). Ticari ürün/marka adlarını "
+    "burada KULLANMA; yerine ürünün tıbbi mekanizmasını veya etken maddesini "
+    "ve ilgili klinik durumu yaz.\n"
+    "PubMed terimleri VE (AND) mantığıyla arar ve ticari marka adlarını "
+    "neredeyse hiç indekslemez; markayı içeren dar bir sorgu sıfır sonuç "
+    "döndürür. 2. satır tam da bunun için var.\n"
+    "SADECE terimleri yaz; açıklama, numara, noktalama veya tırnak ekleme. "
+    "Soru tıbbi bir ürün/hastalık/klinik konu içermiyorsa iki satırı da boş "
+    "bırak."
 )
 
 
@@ -51,24 +59,33 @@ def _timed(timings: dict, label: str, fn):
 
 
 @lru_cache(maxsize=256)
-def _cached_search_terms(question: str) -> str:
+def _cached_search_terms(question: str) -> tuple[str, str]:
     return _pubmed_search_terms(question)
 
 
-def _pubmed_search_terms(question: str) -> str:
-    """PubMed İngilizce indekslendiği için Türkçe soru doğrudan arama
-    terimi olarak kullanıldığında neredeyse hiç sonuç dönmüyor. Qwen ile
-    kısa İngilizce anahtar kelimelere çevirip onu aratıyoruz."""
+def _pubmed_search_terms(question: str) -> tuple[str, str]:
+    """(spesifik sorgu, genel sorgu) döner.
+
+    PubMed İngilizce indekslendiği için Türkçe soru doğrudan aratıldığında
+    neredeyse hiç sonuç dönmüyor; Qwen ile İngilizce terimlere çeviriyoruz.
+    Tek bir sorgu yetmiyor: PubMed terimleri VE mantığıyla arıyor ve ticari
+    marka adlarını (ör. "Efferon Neo") indekslemiyor, dolayısıyla markayı
+    içeren dar sorgu sıfır sonuç döndürüyordu. Bu yüzden aynı çağrıda ikinci,
+    marka içermeyen ve mekanizma/klinik durum düzeyinde bir sorgu daha
+    isteniyor; ilki boş dönerse ona düşülür (ek bir model çağrısı yok).
+    """
     try:
-        # Çıktı birkaç kelime; sınır koymamak modelin uzun uzun açıklama
+        # Çıktı iki kısa satır; sınır koymamak modelin uzun uzun açıklama
         # üretip beklemeyi uzatmasına yol açıyordu.
-        terms = ask_qwen(
-            PUBMED_QUERY_SYSTEM_PROMPT, question, temperature=0.0, max_tokens=32
-        ).strip()
-        return terms or question
+        raw = ask_qwen(PUBMED_QUERY_SYSTEM_PROMPT, question, temperature=0.0, max_tokens=64)
     except Exception:
         logger.exception("PubMed arama terimi çevirisi başarısız oldu, orijinal soru kullanılacak")
-        return question
+        return question, ""
+
+    lines = [line.strip() for line in raw.splitlines() if line.strip()]
+    if not lines:
+        return question, ""
+    return lines[0], (lines[1] if len(lines) > 1 else "")
 
 
 def _build_context(chunks: list[dict], pubmed_results: list[dict]) -> str:
@@ -102,9 +119,15 @@ def _gather_sources(question: str, timings: dict) -> tuple[list[dict], list[dict
     def pubmed_branch() -> list[dict]:
         # Kullanılan İngilizce sorgu teşhis için kritik: PubMed boş dönüyorsa
         # sebep genelde bağlantı değil, çevirinin ürettiği terimlerdir.
-        terms = _cached_search_terms(question)
-        timings["pubmed_sorgusu"] = terms
-        return search_pubmed(terms, max_results=5)
+        specific, broad = _cached_search_terms(question)
+        timings["pubmed_sorgusu"] = specific
+        results = search_pubmed(specific, max_results=5)
+        if not results and broad and broad != specific:
+            # Dar sorgu (genelde marka adı yüzünden) sıfır döndü; mekanizma
+            # düzeyindeki sorguya düş. Ek NCBI turu sadece bu durumda yapılır.
+            timings["pubmed_genel_sorgu"] = broad
+            results = search_pubmed(broad, max_results=5)
+        return results
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         chunks_task = pool.submit(
@@ -117,6 +140,13 @@ def _gather_sources(question: str, timings: dict) -> tuple[list[dict], list[dict
     # ayrımı yanıttan anlaşılmıyordu; ikisi de sıfır kaynakla dönüyor.
     timings["dokuman_parca_sayisi"] = len(chunks)
     timings["pubmed_sonuc_sayisi"] = len(pubmed_results)
+    if chunks:
+        # Vektör araması her zaman "en yakın 5"i döner; alaka eşiği YOK.
+        # Konuyla ilgisiz bir soruda bile 5 parça gelir, sonra model bunları
+        # yetersiz görüp reddeder - yani 5 parça "ilgili kaynak var" demek
+        # değil. Eşik koymadan önce gerçek uzaklıkları görmek gerekiyor.
+        timings["en_yakin_dokuman_uzakligi"] = round(min(c["distance"] for c in chunks), 3)
+        timings["en_uzak_dokuman_uzakligi"] = round(max(c["distance"] for c in chunks), 3)
     return chunks, pubmed_results
 
 

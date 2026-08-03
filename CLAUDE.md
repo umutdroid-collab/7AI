@@ -78,6 +78,19 @@ platformun açılış zaman aşımını patlatırdı. Vektörler kalıcı diskte
 **PubMed İngilizce indeksli.** Türkçe soru doğrudan aratılırsa neredeyse hiç
 sonuç dönmez; `rag.py` önce Qwen ile kısa İngilizce anahtar kelimelere
 çeviriyor. ("PubMed çalışmıyor" şikâyetinin sebebi buydu, bağlantı değil.)
+Tek sorgu da yetmiyor: PubMed terimleri **VE** mantığıyla arıyor ve **ticari
+marka adlarını indekslemiyor**, dolayısıyla "Efferon Neo SOFA score" gibi dar
+bir sorgu sıfır sonuç döndürüyordu (canlıda ölçüldü). Çeviri artık aynı
+çağrıda iki satır üretiyor: spesifik sorgu + marka içermeyen, mekanizma/klinik
+durum düzeyinde genel sorgu. İlki boş dönerse ikinciye düşülür.
+
+**Vektör aramasında alaka eşiği yok.** `query_relevant_chunks` her zaman "en
+yakın 5"i döner; konuyla tamamen ilgisiz bir soruda bile 5 parça gelir. Yani
+`dokuman_parca_sayisi: 5` "ilgili kaynak bulundu" demek DEĞİL — model sonra
+bunları yetersiz görüp reddeder ve bu, boşuna bir Qwen çağrısı (~4-8 sn)
+demektir. Eşik koymadan önce `timing-diagnostics` çıktısındaki
+`en_yakin_dokuman_uzakligi` değerlerini gerçek sorularla toplayın; eşik
+tahminle seçilirse ilgili kaynaklar da elenir.
 
 **Asistan hızı: soru başına dört ağ turu var** (vektör araması, Qwen çevirisi,
 NCBI, Qwen cevabı) ve eskiden hepsi sırayla çalışıp süreleri toplanıyordu.

@@ -6,6 +6,7 @@ import { api, API_BASE_URL, apiErrorMessage } from "../api/client";
 import { checkinPhotoUrl, deleteCheckIn } from "../api/services";
 import { useAuth } from "../context/AuthContext";
 import Alert from "../utils/alert";
+import PhotoViewerModal from "./PhotoViewerModal";
 
 export default function CheckInCard({
   checkin,
@@ -20,7 +21,9 @@ export default function CheckInCard({
 }) {
   const { user } = useAuth();
   const [webPhotoUri, setWebPhotoUri] = useState<string | null>(null);
+  const [webFullPhotoUri, setWebFullPhotoUri] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
 
   useEffect(() => {
     if (Platform.OS !== "web") return;
@@ -37,8 +40,28 @@ export default function CheckInCard({
     };
   }, [checkin.id]);
 
+  // Tam boy dosya yalnızca büyütüldüğünde indirilir; listedeki her kart için
+  // baştan indirmek mobil veride gereksiz yük olurdu.
+  useEffect(() => {
+    if (Platform.OS !== "web" || !isViewerOpen || webFullPhotoUri) return;
+    let objectUrl: string | null = null;
+    api
+      .get(checkinPhotoUrl(checkin.id, "tam"), { responseType: "blob" })
+      .then((response) => {
+        objectUrl = URL.createObjectURL(response.data as Blob);
+        setWebFullPhotoUri(objectUrl);
+      })
+      .catch(() => {});
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [checkin.id, isViewerOpen]);
+
+  const nativeHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
   const photoUri =
     Platform.OS === "web" ? webPhotoUri : `${API_BASE_URL}${checkinPhotoUrl(checkin.id)}`;
+  const fullPhotoUri =
+    Platform.OS === "web" ? webFullPhotoUri : `${API_BASE_URL}${checkinPhotoUrl(checkin.id, "tam")}`;
 
   function handleDelete() {
     Alert.alert("Girişi sil", "Bu giriş kaydı ve fotoğrafı kalıcı olarak silinecek. Emin misiniz?", [
@@ -63,15 +86,31 @@ export default function CheckInCard({
 
   return (
     <View style={styles.card}>
+      <PhotoViewerModal
+        visible={isViewerOpen}
+        uri={
+          // Native'de yetkilendirme başlığı gerektiği için Image kaynağı
+          // doğrudan kullanılamaz; aşağıdaki nativeSource ile veriliyor.
+          Platform.OS === "web" ? webFullPhotoUri : fullPhotoUri
+        }
+        nativeHeaders={Platform.OS === "web" ? undefined : nativeHeaders}
+        title={checkin.hospital.name}
+        subtitle={`${showEmployee ? checkin.user.full_name + " - " : ""}${new Date(
+          checkin.checked_in_at
+        ).toLocaleString("tr-TR")}`}
+        onClose={() => setIsViewerOpen(false)}
+      />
       {photoUri && (
-        <Image
-          source={
-            Platform.OS === "web"
-              ? { uri: photoUri }
-              : { uri: photoUri, headers: token ? { Authorization: `Bearer ${token}` } : undefined }
-          }
-          style={styles.photo}
-        />
+        <TouchableOpacity onPress={() => setIsViewerOpen(true)} accessibilityLabel="Fotoğrafı büyüt">
+          <Image
+            source={
+              Platform.OS === "web"
+                ? { uri: photoUri }
+                : { uri: photoUri, headers: nativeHeaders }
+            }
+            style={styles.photo}
+          />
+        </TouchableOpacity>
       )}
       <View style={styles.info}>
         {showEmployee && <Text style={styles.employee}>{checkin.user.full_name}</Text>}

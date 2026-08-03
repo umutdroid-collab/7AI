@@ -144,6 +144,18 @@ check-in fotoğrafının amacını boşa çıkarıyordu. Web'de `WebCameraModal`
 (expo-camera) canlı kameradan kare yakalar; galeriye erişim yolu yok.
 Native'de `launchCameraAsync` zaten sadece kamera.
 
+**Check-in fotoğrafları sunucuda küçültülür** (`services/images.py`), istemcide
+değil: eski uygulama sürümleri, farklı tarayıcılar ve doğrudan API'ye yapılan
+istekler yine ham dosya gönderir, o yüzden küçültme yükleme anında ve şartsız
+yapılır. Ham dosya saklanmaz — 12 MP telefon fotoğrafı 2.4 MB'tan ~540 KB'a
+iner (1280 px, JPEG q72), ayrıca ~10 KB'lık bir önizleme üretilir. Liste
+kartları önizlemeyi (`?boyut=onizleme`), büyütünce açılan görüntüleyici tam
+boyu ister; listede her kart için tam boy indirmek mobil veride pahalıydı.
+EXIF yönü uygulanır (yoksa fotoğraflar yan yatık görünür) ve EXIF taşınmaz
+(yer + konum sızıntısı). Küçültme başarısız olursa dosya olduğu gibi kalır;
+check-in kaydı fotoğraf yüzünden kaybedilmemeli. Birikmiş eski fotoğraflar
+için `POST /checkins/compress-existing` (admin) var.
+
 **iOS'ta web push güvenilir değil** (16.4+ ve ana ekrana ekleme şartı, simge
 silinince susar). Vade/SKT uyarıları bu yüzden push değil, her sabah
 `DIGEST_HOUR`'da gönderilen tek bir **e-posta özeti** (`daily_digest.py`).
@@ -204,6 +216,8 @@ normal akışta hatalar sessizce yutulur:
   yanıtının hangi aşamada ne kadar beklediğini milisaniye olarak döner
 - `POST /notifications/email-test`, `POST /notifications/digest-run`
 - `POST /invoices/evobulut-sync` (senkronizasyonu elle tetikler)
+- `POST /checkins/compress-existing` (eski fotoğrafları toplu küçültür, kaç MB
+  kazanıldığını döner)
 
 ## Açık işler
 

@@ -11,7 +11,7 @@ from app.deps import get_current_user, require_admin
 from app.models import CheckIn, Hospital, User, UserRole
 from app.schemas import CheckInOut, CheckInUpdate
 from app.utils import safe_image_filename, unique_destination
-from app.services import audit
+from app.services import audit, images
 
 router = APIRouter(prefix="/checkins", tags=["checkins"])
 settings = get_settings()
@@ -49,6 +49,9 @@ async def create_checkin(
                 os.remove(dest_path)
                 raise HTTPException(status_code=400, detail="Fotoğraf çok büyük (maksimum 15 MB)")
             out.write(chunk)
+
+    # Diske kalıcı olarak yazılan hâli küçültülmüş olan; ham dosya saklanmıyor.
+    images.compress_checkin_photo(dest_path)
 
     checkin = CheckIn(
         user_id=user.id,
@@ -102,12 +105,48 @@ def _ensure_can_view(checkin: CheckIn, user: User) -> None:
 
 
 @router.get("/{checkin_id}/photo")
-def get_checkin_photo(checkin_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def get_checkin_photo(
+    checkin_id: int,
+    boyut: str = "tam",
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """boyut=onizleme küçük önizlemeyi, boyut=tam (varsayılan) tam boyu döner.
+
+    Liste kartlarında fotoğraf 64 pikselde gösteriliyor; oraya tam boy dosyayı
+    indirmek mobil veride gereksiz yük. Büyütmek için tam boy istenir.
+    """
     checkin = _get_checkin_or_404(checkin_id, db)
     _ensure_can_view(checkin, user)
     if not os.path.exists(checkin.photo_path):
         raise HTTPException(status_code=404, detail="Fotoğraf bulunamadı")
-    return FileResponse(checkin.photo_path)
+
+    path = images.ensure_thumbnail(checkin.photo_path) if boyut == "onizleme" else checkin.photo_path
+    return FileResponse(path)
+
+
+@router.post("/compress-existing")
+def compress_existing_photos(db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    """Sıkıştırma eklenmeden önce yüklenmiş fotoğrafları toplu küçültür.
+
+    Yeni yüklemeler zaten küçültülüyor; bu uç yalnızca birikmiş eski
+    fotoğrafların kapladığı yeri geri kazanmak için, elle çalıştırılır.
+    """
+    total_before = total_after = processed = 0
+    for checkin in db.query(CheckIn).all():
+        if not os.path.exists(checkin.photo_path):
+            continue
+        result = images.compress_checkin_photo(checkin.photo_path)
+        total_before += result["before"]
+        total_after += result["after"]
+        processed += result["compressed"]
+
+    return {
+        "islenen_fotograf": processed,
+        "onceki_toplam_mb": round(total_before / 1024 / 1024, 2),
+        "sonraki_toplam_mb": round(total_after / 1024 / 1024, 2),
+        "kazanilan_mb": round((total_before - total_after) / 1024 / 1024, 2),
+    }
 
 
 @router.patch("/{checkin_id}", response_model=CheckInOut)
@@ -133,8 +172,7 @@ def delete_checkin(checkin_id: int, db: Session = Depends(get_db), user: User = 
         f"Giriş kaydı silindi: {checkin.user.full_name} - {checkin.hospital.name}"
         f" ({checkin.checked_in_at:%d.%m.%Y %H:%M})",
     )
-    if os.path.exists(checkin.photo_path):
-        os.remove(checkin.photo_path)
+    images.remove_photo_files(checkin.photo_path)
     db.delete(checkin)
     db.commit()
     return {"ok": True}

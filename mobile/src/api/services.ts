@@ -356,8 +356,13 @@ export async function fetchCheckIns(params?: { user_id?: number; hospital_id?: n
   return data;
 }
 
-export function checkinPhotoUrl(id: number) {
-  return `/checkins/${id}/photo`;
+/**
+ * Listede fotoğraf 64 pikselde gösteriliyor; oraya tam boy dosyayı indirmek
+ * mobil veride gereksiz yük olduğu için varsayılan önizlemedir. Büyütürken
+ * "tam" istenir.
+ */
+export function checkinPhotoUrl(id: number, boyut: "onizleme" | "tam" = "onizleme") {
+  return `/checkins/${id}/photo?boyut=${boyut}`;
 }
 
 export async function updateCheckInComment(id: number, comment: string | null) {

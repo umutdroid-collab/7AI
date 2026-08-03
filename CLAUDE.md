@@ -93,6 +93,17 @@ döndürüyordu. PubMed için zaten üretilen çeviri artık vektör aramasında
 kullanılıyor (`dokuman_sorgusu`); ek model çağrısı yok, çeviri iki dalın da
 önüne alındı. Çeviri koparsa Türkçe soruya düşülür.
 
+**Asistan iki sebeple fazla reddediyordu**, ikisi de canlı ölçümle yakalandı:
+(1) çeviri adımı bilmediği ürünün etken maddesini uyduruyordu — "efferon
+hastaların laktat seviyesini düşürür mü" sorgusu `lactate levels acetaminophen`
+oluyor, bu sorgu hem PubMed'i hem vektör aramasını zehirliyordu (parçalar
+1.05-1.11'e düşüp eleniyordu). Prompt artık ürün adını harfi harfine korumayı,
+hiçbir satırda etken madde tahmin etmemeyi şart koşuyor. (2) Sistem promptu
+"kaynaklar soruyu tam cevaplamıyorsa reddet" diyordu; en yakın parça 0.594
+(açıkça ilgili) olan soru bile reddediliyordu. Artık ret yalnızca soru
+alan dışıysa **ya da** kaynakların hiçbiri konuyla ilgili değilse; kaynaklar
+ilgili ama eksikse model özetleyip neyin kapsanmadığını söylüyor.
+
 **Vektör aramasının kendi alaka eşiği yok**, bu yüzden `rag.py` uzaklığa göre
 eliyor (`DOCUMENT_MAX_DISTANCE`, varsayılan 0.95). Chroma her zaman "en yakın
 5"i döner; ilgisiz bir soruda bile 5 parça gelir ve eşik olmadan bunlar ~2000

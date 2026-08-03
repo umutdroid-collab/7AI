@@ -266,6 +266,37 @@ def test_total_time_recorded_even_when_no_sources(monkeypatch):
     assert "qwen_cevap_ms" not in timings  # kaynak yoksa model hiç çağrılmamalı
 
 
+def test_answers_when_sources_are_related_but_incomplete(monkeypatch):
+    """Canlı ölçümde en yakın parça 0.594 (belirgin ilgili) olduğu halde model
+    reddediyordu: soruyu birebir cevaplamayan ama konuyla ilgili kaynakları
+    "yetersiz" sayıyordu. Kaynaklı eksik cevap, hiç cevap vermemekten iyi."""
+    _stub(monkeypatch)
+    partial = (
+        "Kaynaklarda ameliyat süresine dair doğrudan bir karşılaştırma yok; "
+        "bildirilen sonuçlar şunlardır [Kaynak: c.pdf, sayfa 1]"
+    )
+    monkeypatch.setattr(
+        rag,
+        "ask_qwen",
+        lambda system_prompt, *a, **k: (
+            "aspirin cardiovascular\nantiplatelet"
+            if system_prompt is rag.PUBMED_QUERY_SYSTEM_PROMPT
+            else partial
+        ),
+    )
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        answer, sources, was_answered = rag.answer_question(db, "soru", None, {})
+    finally:
+        db.close()
+
+    assert was_answered
+    assert answer == partial
+    assert len(sources) == 2
+
+
 def test_empty_model_output_is_reported_not_shown_blank(monkeypatch):
     """qwen-plus gibi "düşünme" modu olan modellerde muhakeme de token
     bütçesinden yeniyor; bütçe cevaba sıra gelmeden bitince model boş içerik

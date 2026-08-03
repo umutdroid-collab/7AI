@@ -57,6 +57,8 @@ doğrula.
 **Railway Hobby planı SMTP portlarını (25/465/587/2525) tamamen engelliyor.**
 E-posta bu yüzden SMTP ile değil, Resend'in HTTPS API'siyle gönderiliyor
 (`services/email.py`). SMTP yolu yedek olarak duruyor ama bulutta çalışmaz.
+Canlıda doğrulandı (03.08.2026): `email-test` → `provider: "resend"`, mail
+ulaştı. Gönderen `7medikal.com` alt alan adı Resend'de doğrulanmış durumda.
 
 **Railway Hobby'de Volume yedeği yok.** Bu yüzden yedekleme uygulama içinde
 (`services/backup.py`): haftalık .zip (DB + tüm yüklenen dosyalar), son 8
@@ -165,8 +167,9 @@ normal akışta hatalar sessizce yutulur:
 
 ## Açık işler
 
-- **Resend**: alan adı doğrulandı; `RESEND_API_KEY` + `SMTP_FROM` Railway'e
-  girilip `POST /notifications/email-test` ile doğrulanacak.
+- Eski `SMTP_HOST/USERNAME/PASSWORD` değişkenleri Railway'de duruyorsa
+  silinmeli: Resend anahtarı varken kullanılmıyorlar ama anahtar bir gün
+  kaldırılırsa sistem sessizce Railway'de çalışmayan SMTP yoluna düşer.
 - Yedeklerin dış depoya (örn. Cloudflare R2) otomatik kopyalanması — şu an
   yedekler yalnızca Railway diskinde.
 - Asistanın EvoBulut'a canlı sorgu sorabilmesi ("bu ay ne kadar fatura

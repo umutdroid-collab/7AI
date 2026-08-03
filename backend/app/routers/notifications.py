@@ -52,8 +52,11 @@ def mark_read(notification_id: int, db: Session = Depends(get_db), user: User = 
 
 @router.post("/email-test")
 def send_test_email(user: User = Depends(require_admin)):
-    """SMTP ayarlarını doğrular: giriş yapan yöneticinin adresine bir deneme
-    e-postası gönderir ve varsa gerçek hatayı döner."""
+    """E-posta ayarlarını doğrular: giriş yapan yöneticinin adresine bir deneme
+    e-postası gönderir. Yanıttaki `provider` hangi yolun kullanıldığını gösterir
+    ("resend" beklenir; "smtp" görünüyorsa RESEND_API_KEY okunmamış demektir).
+    Hata olursa sağlayıcının gerçek hata metni döner - normal akışta bu hata
+    sessizce yutulur."""
     from app.services.email import EmailNotConfigured, provider_name, send_email
 
     provider = provider_name()

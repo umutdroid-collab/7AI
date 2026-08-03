@@ -268,6 +268,32 @@ def test_total_time_recorded_even_when_no_sources(monkeypatch):
     assert answer == rag.NO_SOURCES_MESSAGE
 
 
+def test_refusal_despite_relevant_chunks_is_flagged(monkeypatch):
+    """Eşiği geçen parça varken ret, modelin kuralı yanlış uyguladığı anlamına
+    gelir; teşhiste görünmezse promptun ayarlanması gerektiği fark edilmiyor."""
+    _stub(monkeypatch)
+    monkeypatch.setattr(
+        rag,
+        "ask_qwen",
+        lambda system_prompt, *a, **k: (
+            "aspirin cardiovascular\nantiplatelet"
+            if system_prompt is rag.PUBMED_QUERY_SYSTEM_PROMPT
+            else rag.REFUSAL_MARKER
+        ),
+    )
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        timings = {}
+        _, _, was_answered = rag.answer_question(db, "efferon bilirubin", None, timings)
+    finally:
+        db.close()
+
+    assert not was_answered
+    assert timings["model_kaynak_varken_reddetti"] is True
+
+
 def test_answers_when_sources_are_related_but_incomplete(monkeypatch):
     """Canlı ölçümde en yakın parça 0.594 (belirgin ilgili) olduğu halde model
     reddediyordu: soruyu birebir cevaplamayan ama konuyla ilgili kaynakları

@@ -103,9 +103,14 @@ başına yazılmasını da yasaklıyor**: ilk düzeltmede model klinik terimleri
 sadece `Efferon` üretti, uzaklık 1.05'ten 1.431'e çıktı. Sorgu ürün adı **ve**
 klinik terimleri birlikte içermeli. (2) Sistem promptu
 "kaynaklar soruyu tam cevaplamıyorsa reddet" diyordu; en yakın parça 0.594
-(açıkça ilgili) olan soru bile reddediliyordu. Artık ret yalnızca soru
-alan dışıysa **ya da** kaynakların hiçbiri konuyla ilgili değilse; kaynaklar
-ilgili ama eksikse model özetleyip neyin kapsanmadığını söylüyor.
+(açıkça ilgili) olan soru bile reddediliyordu. Ret kriteri iki kez daraltıldı:
+"kaynakların hiçbiri ilgili değilse de reddet" maddesi de yetmedi — model
+"sorulan parametre (bilirubin) hiçbir kaynakta geçmiyor" durumunu ilgisizlik
+sayıp 0.772'lik parçalarla reddetti. Artık ret **yalnızca sorunun kendisine**
+bakıyor (alan dışı mı?); kaynakların içeriği bu kararı hiç etkilemiyor.
+Sorulan parametre kaynaklarda yoksa model bunu söyleyip aynı ürün/durum için
+bildirilen sonuçları özetliyor. Eşiği geçen parça varken yine de ret gelirse
+teşhis çıktısında `model_kaynak_varken_reddetti` olarak görünür.
 
 **Vektör aramasının kendi alaka eşiği yok**, bu yüzden `rag.py` uzaklığa göre
 eliyor (`DOCUMENT_MAX_DISTANCE`, varsayılan 0.95). Chroma her zaman "en yakın

@@ -98,7 +98,10 @@ kullanılıyor (`dokuman_sorgusu`); ek model çağrısı yok, çeviri iki dalın
 hastaların laktat seviyesini düşürür mü" sorgusu `lactate levels acetaminophen`
 oluyor, bu sorgu hem PubMed'i hem vektör aramasını zehirliyordu (parçalar
 1.05-1.11'e düşüp eleniyordu). Prompt artık ürün adını harfi harfine korumayı,
-hiçbir satırda etken madde tahmin etmemeyi şart koşuyor. (2) Sistem promptu
+hiçbir satırda etken madde tahmin etmemeyi şart koşuyor — **ve ürün adının tek
+başına yazılmasını da yasaklıyor**: ilk düzeltmede model klinik terimleri atıp
+sadece `Efferon` üretti, uzaklık 1.05'ten 1.431'e çıktı. Sorgu ürün adı **ve**
+klinik terimleri birlikte içermeli. (2) Sistem promptu
 "kaynaklar soruyu tam cevaplamıyorsa reddet" diyordu; en yakın parça 0.594
 (açıkça ilgili) olan soru bile reddediliyordu. Artık ret yalnızca soru
 alan dışıysa **ya da** kaynakların hiçbiri konuyla ilgili değilse; kaynaklar

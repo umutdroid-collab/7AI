@@ -44,8 +44,11 @@ KURALLAR:
 PUBMED_QUERY_SYSTEM_PROMPT = (
     "Aşağıdaki Türkçe soruyu PubMed'de arama yapmak üzere İngilizce anahtar "
     "kelimelere çevir. TAM İKİ SATIR yaz:\n"
-    "1. satır: soruya en yakın spesifik terimler (2-6 kelime). Sorudaki ürün "
-    "adını AYNEN, harfi harfine koru; başka bir maddeyle DEĞİŞTİRME.\n"
+    "1. satır: ürün adı + sorudaki klinik terimlerin İngilizcesi (3-6 kelime). "
+    "Ürün adını AYNEN, harfi harfine koru; başka bir maddeyle DEĞİŞTİRME. "
+    "Ürün adını TEK BAŞINA yazma - klinik terimler mutlaka bulunmalı, yoksa "
+    "arama işe yaramaz. Örnek: soru '<ürün> laktat seviyesini düşürür mü' ise "
+    "1. satır '<ürün> lactate levels' olmalı, sadece '<ürün>' değil.\n"
     "2. satır: daha GENEL terimler (2-4 kelime). Ürün adını buradan ÇIKAR ve "
     "yerine sadece sorudaki klinik durumu/ölçütü yaz.\n"
     "PubMed terimleri VE (AND) mantığıyla arar ve ticari marka adlarını "

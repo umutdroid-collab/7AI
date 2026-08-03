@@ -1,4 +1,5 @@
 import logging
+import threading
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,7 +14,7 @@ from app.services.invoice_watcher import start_invoice_watcher
 from app.services.reminders import start_scheduler
 from app.services.backup import start_backup_scheduler
 from app.services.evobulut_sync import start_evobulut_sync_scheduler
-from app.services.vector_store import reindex_all
+from app.services.vector_store import reindex_all, warm_up as warm_up_vector_store
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("main")
@@ -44,6 +45,10 @@ async def lifespan(app: FastAPI):
         logger.info("Klinik doküman indeksleme tamamlandı: %d parça", chunks)
     except Exception:
         logger.exception("Başlangıçta klinik doküman indeksleme başarısız oldu")
+
+    # Embedding modelini arka planda yükle: açılışı bekletmeden, ilk soruyu
+    # soran kullanıcının model yükleme süresini ödemesini engeller.
+    threading.Thread(target=warm_up_vector_store, name="vector-warmup", daemon=True).start()
 
     yield
 

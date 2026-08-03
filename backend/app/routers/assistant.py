@@ -63,6 +63,34 @@ def pubmed_diagnostics(_: User = Depends(require_admin)):
         }
 
 
+@router.post("/timing-diagnostics")
+def timing_diagnostics(
+    payload: ChatRequest, db: Session = Depends(get_db), user: User = Depends(require_admin)
+):
+    """Bir soruyu normal akışın aynısıyla çalıştırıp her aşamanın kaç
+    milisaniye sürdüğünü döner. "Asistan yavaş" denildiğinde nerede
+    beklendiğini tahmin etmek yerine ölçmek için - aşamalar normal akışta
+    kullanıcıya görünmüyor.
+
+    - dokuman_arama_ms: yerel klinik çalışma (vektör) araması
+    - pubmed_ms: Qwen ile İngilizce anahtar kelime çevirisi + NCBI istekleri
+      (bu ikisi doküman aramasıyla eş zamanlı çalışır)
+    - qwen_cevap_ms: asıl cevabı üreten Qwen çağrısı
+    - toplam_ms: uçtan uca
+    """
+    timings: dict = {}
+    answer, sources, was_answered = answer_question(db, payload.question, user.id, timings)
+    return {
+        "timings_ms": timings,
+        "was_answered": was_answered,
+        "source_count": len(sources),
+        "answer_length": len(answer),
+        "model": settings.qwen_model,
+        "max_tokens": settings.qwen_max_tokens,
+        "thinking_disabled": settings.qwen_disable_thinking,
+    }
+
+
 MAX_UPLOAD_BYTES = 30 * 1024 * 1024
 
 

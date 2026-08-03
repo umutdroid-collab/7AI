@@ -27,6 +27,17 @@ class Settings(BaseSettings):
     qwen_base_url: str = "http://localhost:11434/v1"
     qwen_api_key: str = "ollama"
     qwen_model: str = "qwen2.5:14b-instruct"
+    # Cevap süresi büyük ölçüde ÜRETİLEN token sayısıyla doğru orantılı;
+    # sınır koymak en uzun cevaplarda beklemeyi kısaltır.
+    qwen_max_tokens: int = 900
+    # Model yanıt vermezse istemcinin varsayılan zaman aşımı 10 dakika;
+    # kullanıcı o kadar bekleyemez.
+    qwen_timeout_seconds: int = 60
+    # Qwen3 ailesi varsayılan olarak "düşünme" (thinking) modunda çalışır ve
+    # cevaptan önce görünmeyen uzun bir muhakeme üretir - süreyi katlar.
+    # Model bu parametreyi desteklemiyorsa istek hata verebileceği için
+    # kapatma isteğe bağlı.
+    qwen_disable_thinking: bool = False
 
     pubmed_email: str = ""
     pubmed_api_key: str = ""

@@ -77,6 +77,25 @@ platformun açılış zaman aşımını patlatırdı. Vektörler kalıcı diskte
 sonuç dönmez; `rag.py` önce Qwen ile kısa İngilizce anahtar kelimelere
 çeviriyor. ("PubMed çalışmıyor" şikâyetinin sebebi buydu, bağlantı değil.)
 
+**Asistan hızı: soru başına dört ağ turu var** (vektör araması, Qwen çevirisi,
+NCBI, Qwen cevabı) ve eskiden hepsi sırayla çalışıp süreleri toplanıyordu.
+Şimdi doküman araması ile PubMed dalı `_gather_sources()` içinde eş zamanlı
+çalışıyor; çeviri `lru_cache` ile tekrar eden sorularda hiç modele gitmiyor.
+Ölçüm `answer_question(..., timings)` ile her yolda tutulur ve loga düşer —
+"yavaş" denildiğinde `POST /assistant/timing-diagnostics` ile hangi aşamanın
+baskın olduğuna bak, tahminle optimize etme. Kalan süre neredeyse tamamen
+Qwen'in cevabı üretmesidir; oradaki kollar kod değil **ayar**:
+`QWEN_MAX_TOKENS` (üretilen token sayısı süreyle doğru orantılı),
+`QWEN_MODEL` (küçük/hızlı model) ve Qwen3 ailesindeyseniz
+`QWEN_DISABLE_THINKING=true` (varsayılan "düşünme" modu cevaptan önce
+görünmeyen uzun bir muhakeme üretir). `QWEN_TIMEOUT_SECONDS` de eklendi:
+OpenAI istemcisinin varsayılanı 10 dakikaydı, model susarsa kullanıcı o kadar
+bekliyordu.
+
+**Embedding modeli açılışta ısıtılır** (`vector_store.warm_up()`, arka planda
+bir thread). ONNX MiniLM ilk kullanımda indirilip yükleniyor ve bu bedeli
+günün ilk sorusunu soran kullanıcı ödüyordu.
+
 **Web'de kamera.** `expo-image-picker`'ın "kamera" seçeneği web'de aslında
 dosya seçicidir; kullanıcı galeriden eski bir fotoğraf seçebiliyordu ve bu
 check-in fotoğrafının amacını boşa çıkarıyordu. Web'de `WebCameraModal`
@@ -129,6 +148,7 @@ Tam liste ve açıklamalar: `backend/.env.example`. Kritik olanlar:
 | `RESEND_API_KEY`, `SMTP_FROM` | E-posta özeti için |
 | `EVOBULUT_USERNAME/PASSWORD/APP_NAME` | Fatura senkronizasyonu (saatte bir) |
 | `QWEN_BASE_URL/API_KEY/MODEL` | Alibaba Model Studio (token başına ücretli) |
+| `QWEN_MAX_TOKENS` (900), `QWEN_TIMEOUT_SECONDS` (60), `QWEN_DISABLE_THINKING` (false) | Asistan hızının ayarla çevrilen kolları |
 | `CORS_ORIGINS` | Şu an `*`; `https://saha.7medikal.com` ile daraltılabilir |
 
 ## Teşhis uçları (hepsi admin)
@@ -138,6 +158,8 @@ normal akışta hatalar sessizce yutulur:
 
 - `GET /invoices/evobulut-diagnostics` ve `.../pdf/{id}`
 - `GET /assistant/pubmed-diagnostics`
+- `POST /assistant/timing-diagnostics` (gövde: `{"question": "..."}`) — asistan
+  yanıtının hangi aşamada ne kadar beklediğini milisaniye olarak döner
 - `POST /notifications/email-test`, `POST /notifications/digest-run`
 - `POST /invoices/evobulut-sync` (senkronizasyonu elle tetikler)
 

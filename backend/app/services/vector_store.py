@@ -167,6 +167,26 @@ def reset_client() -> None:
         logger.exception("Chroma istemci önbelleği temizlenemedi")
 
 
+def warm_up() -> None:
+    """Embedding modelini (ONNX MiniLM) önceden yükler.
+
+    Model ilk kullanımda diske indirilip belleğe yükleniyor; bu maliyeti
+    gününün ilk sorusunu soran kullanıcı ödüyordu (soru başına birkaç saniye
+    fark). Açılışta arka planda yapılınca kullanıcı hiç görmüyor.
+    """
+    try:
+        collection = get_collection()
+        if collection.count():
+            collection.query(query_texts=["ısınma"], n_results=1)
+        else:
+            # Boş koleksiyonda sorgu yapılamaz; modeli doğrudan çağırarak yükle.
+            embedding_functions.DefaultEmbeddingFunction()(["ısınma"])
+        logger.info("Vektör indeksi ve embedding modeli hazır")
+    except Exception:
+        # Isınma başarısız olsa da uygulama çalışmalı; ilk sorguda tekrar denenir.
+        logger.exception("Embedding modeli ısıtılamadı")
+
+
 def query_relevant_chunks(question: str, n_results: int = 5) -> list[dict]:
     collection = get_collection()
     if collection.count() == 0:

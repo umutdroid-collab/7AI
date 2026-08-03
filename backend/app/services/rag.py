@@ -1,5 +1,8 @@
 import json
 import logging
+import time
+from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 
 from sqlalchemy.orm import Session
 
@@ -37,12 +40,29 @@ PUBMED_QUERY_SYSTEM_PROMPT = (
 )
 
 
+def _timed(timings: dict, label: str, fn):
+    start = time.perf_counter()
+    try:
+        return fn()
+    finally:
+        timings[label] = round((time.perf_counter() - start) * 1000)
+
+
+@lru_cache(maxsize=256)
+def _cached_search_terms(question: str) -> str:
+    return _pubmed_search_terms(question)
+
+
 def _pubmed_search_terms(question: str) -> str:
     """PubMed İngilizce indekslendiği için Türkçe soru doğrudan arama
     terimi olarak kullanıldığında neredeyse hiç sonuç dönmüyor. Qwen ile
     kısa İngilizce anahtar kelimelere çevirip onu aratıyoruz."""
     try:
-        terms = ask_qwen(PUBMED_QUERY_SYSTEM_PROMPT, question, temperature=0.0).strip()
+        # Çıktı birkaç kelime; sınır koymamak modelin uzun uzun açıklama
+        # üretip beklemeyi uzatmasına yol açıyordu.
+        terms = ask_qwen(
+            PUBMED_QUERY_SYSTEM_PROMPT, question, temperature=0.0, max_tokens=32
+        ).strip()
         return terms or question
     except Exception:
         logger.exception("PubMed arama terimi çevirisi başarısız oldu, orijinal soru kullanılacak")
@@ -70,9 +90,43 @@ def _build_context(chunks: list[dict], pubmed_results: list[dict]) -> str:
     return "\n\n".join(parts)
 
 
-def answer_question(db: Session, question: str, user_id: int | None) -> tuple[str, list[SourceOut], bool]:
-    chunks = query_relevant_chunks(question, n_results=5)
-    pubmed_results = search_pubmed(_pubmed_search_terms(question), max_results=5)
+def _gather_sources(question: str, timings: dict) -> tuple[list[dict], list[dict]]:
+    """Yerel doküman araması ile PubMed aramasını EŞ ZAMANLI çalıştırır.
+
+    İkisi birbirinden tamamen bağımsız ama sırayla çalıştırıldıklarında
+    süreleri toplanıyordu. PubMed dalı ayrıca kendi içinde bir Qwen çevirisi
+    + iki NCBI isteği barındırdığı için asıl bekleme oradaydı.
+    """
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        chunks_task = pool.submit(
+            _timed, timings, "dokuman_arama_ms", lambda: query_relevant_chunks(question, n_results=5)
+        )
+        pubmed_task = pool.submit(
+            _timed, timings, "pubmed_ms", lambda: search_pubmed(_cached_search_terms(question), max_results=5)
+        )
+        return chunks_task.result(), pubmed_task.result()
+
+
+def answer_question(
+    db: Session, question: str, user_id: int | None, timings: dict | None = None
+) -> tuple[str, list[SourceOut], bool]:
+    """timings verilirse her aşamanın süresi (ms) oraya yazılır; verilmese de
+    ölçüm yapılır ve loga düşer - "asistan yavaş" şikâyetinde nerede
+    beklendiğini tahmin etmemek için."""
+    timings = timings if timings is not None else {}
+    started = time.perf_counter()
+    try:
+        return _answer_question(db, question, user_id, timings)
+    finally:
+        # Erken dönüşlerde (kaynak yok / model hatası) de toplam süre yazılmalı.
+        timings["toplam_ms"] = round((time.perf_counter() - started) * 1000)
+        logger.info("Asistan yanıt süreleri: %s", timings)
+
+
+def _answer_question(
+    db: Session, question: str, user_id: int | None, timings: dict
+) -> tuple[str, list[SourceOut], bool]:
+    chunks, pubmed_results = _gather_sources(question, timings)
 
     if not chunks and not pubmed_results:
         _log(db, user_id, question, REFUSAL_MESSAGE, [], was_answered=False)
@@ -82,7 +136,7 @@ def answer_question(db: Session, question: str, user_id: int | None) -> tuple[st
     user_prompt = f"SORU: {question}\n\n{context}"
 
     try:
-        raw_answer = ask_qwen(SYSTEM_PROMPT, user_prompt)
+        raw_answer = _timed(timings, "qwen_cevap_ms", lambda: ask_qwen(SYSTEM_PROMPT, user_prompt))
     except Exception:
         logger.exception("Qwen çağrısı başarısız oldu")
         error_message = (

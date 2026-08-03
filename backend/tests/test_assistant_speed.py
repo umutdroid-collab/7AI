@@ -122,6 +122,78 @@ def test_falls_back_to_broader_query_when_specific_one_finds_nothing(monkeypatch
     assert timings["pubmed_genel_sorgu"] == "hemoperfusion sepsis"
 
 
+def test_irrelevant_chunks_are_dropped_by_the_distance_threshold(monkeypatch):
+    """Canlı ölçüm: konusu kapsanan soruda en yakın parça 0.595, kapsanmayan
+    soruda 1.142. Eşik ikisinin arasında; uzak parçalar bağlama girmemeli."""
+    from app.config import get_settings
+
+    limit = get_settings().document_max_distance
+    far = [
+        {"text": "x", "filename": "f.pdf", "page": 1, "title": "T", "distance": limit + 0.2}
+        for _ in range(5)
+    ]
+    monkeypatch.setattr(rag, "query_relevant_chunks", lambda q, n_results=5: far)
+    monkeypatch.setattr(rag, "search_pubmed", lambda q, max_results=5: [])
+    monkeypatch.setattr(rag, "ask_qwen", lambda *a, **k: "terms\nbroad")
+
+    timings = {}
+    chunks, _ = rag._gather_sources("alakasız soru", timings)
+
+    assert chunks == []
+    assert timings["dokuman_parca_sayisi"] == 0
+    assert timings["elenen_parca_sayisi"] == 5
+    # Uzaklıklar elemeden ÖNCE kaydedilmeli, yoksa eşik ayarlanamaz.
+    assert timings["en_yakin_dokuman_uzakligi"] == round(limit + 0.2, 3)
+
+
+def test_relevant_chunks_survive_the_threshold(monkeypatch):
+    from app.config import get_settings
+
+    limit = get_settings().document_max_distance
+    near = [{"text": "x", "filename": "f.pdf", "page": 1, "title": "T", "distance": limit - 0.3}]
+    monkeypatch.setattr(rag, "query_relevant_chunks", lambda q, n_results=5: near)
+    monkeypatch.setattr(rag, "search_pubmed", lambda q, max_results=5: [])
+    monkeypatch.setattr(rag, "ask_qwen", lambda *a, **k: "terms\nbroad")
+
+    timings = {}
+    chunks, _ = rag._gather_sources("kapsanan soru", timings)
+
+    assert len(chunks) == 1
+    assert "elenen_parca_sayisi" not in timings
+
+
+def test_no_model_call_when_everything_is_filtered_out(monkeypatch):
+    """Eşiğin asıl kazancı: ilgisiz soruda Qwen hiç çağrılmamalı. Eskiden
+    ilgisiz 5 parça modele gidiyor, model reddediyor ve bu 8-14 saniye
+    sürüyordu."""
+    from app.config import get_settings
+    from app.database import SessionLocal
+
+    limit = get_settings().document_max_distance
+    far = [{"text": "x", "filename": "f.pdf", "page": 1, "title": "T", "distance": limit + 0.5}]
+    monkeypatch.setattr(rag, "query_relevant_chunks", lambda q, n_results=5: far)
+    monkeypatch.setattr(rag, "search_pubmed", lambda q, max_results=5: [])
+
+    qwen_calls = []
+
+    def counting_qwen(system_prompt, user_prompt, temperature=0.2, max_tokens=None):
+        qwen_calls.append(system_prompt)
+        return "terms\nbroad"
+
+    monkeypatch.setattr(rag, "ask_qwen", counting_qwen)
+
+    db = SessionLocal()
+    try:
+        timings = {}
+        _, _, was_answered = rag.answer_question(db, "alakasız soru", None, timings)
+    finally:
+        db.close()
+
+    assert not was_answered
+    assert qwen_calls == [rag.PUBMED_QUERY_SYSTEM_PROMPT]  # sadece çeviri, cevap çağrısı yok
+    assert "qwen_cevap_ms" not in timings
+
+
 def test_document_search_uses_the_english_translation(monkeypatch):
     """Embedding modeli (MiniLM) yalnızca İngilizce: Türkçe soruyla aratınca
     ilgili dokümana olan uzaklık, alakasız bir sorununkiyle aynı çıkıyordu.

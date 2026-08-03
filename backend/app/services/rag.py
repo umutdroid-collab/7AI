@@ -153,15 +153,23 @@ def _gather_sources(question: str, timings: dict) -> tuple[list[dict], list[dict
 
     # "Kaynak bulunamadı" ile "kaynak bulundu ama model yetersiz gördü"
     # ayrımı yanıttan anlaşılmıyordu; ikisi de sıfır kaynakla dönüyor.
-    timings["dokuman_parca_sayisi"] = len(chunks)
     timings["pubmed_sonuc_sayisi"] = len(pubmed_results)
     if chunks:
-        # Vektör araması her zaman "en yakın 5"i döner; alaka eşiği YOK.
-        # Konuyla ilgisiz bir soruda bile 5 parça gelir, sonra model bunları
-        # yetersiz görüp reddeder - yani 5 parça "ilgili kaynak var" demek
-        # değil. Eşik koymadan önce gerçek uzaklıkları görmek gerekiyor.
+        # Uzaklıklar ELEMEDEN ÖNCE kaydedilir: eşiği ileride ayarlamak için
+        # elenenlerin ne kadar uzakta olduğunu da görmek gerekiyor.
         timings["en_yakin_dokuman_uzakligi"] = round(min(c["distance"] for c in chunks), 3)
         timings["en_uzak_dokuman_uzakligi"] = round(max(c["distance"] for c in chunks), 3)
+
+    # Vektör araması her zaman "en yakın 5"i döner, alaka eşiği yoktur:
+    # konuyla ilgisiz bir soruda bile 5 parça gelir. Eşik olmadan bu ilgisiz
+    # parçalar ~2000 token'lık bağlam olarak modele gidiyor, model onları
+    # yetersiz görüp reddediyordu - yani boşuna beklenen bir Qwen çağrısı.
+    kept = [c for c in chunks if c["distance"] <= settings.document_max_distance]
+    if len(kept) != len(chunks):
+        timings["elenen_parca_sayisi"] = len(chunks) - len(kept)
+    chunks = kept
+
+    timings["dokuman_parca_sayisi"] = len(chunks)
     return chunks, pubmed_results
 
 

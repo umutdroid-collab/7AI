@@ -93,13 +93,13 @@ döndürüyordu. PubMed için zaten üretilen çeviri artık vektör aramasında
 kullanılıyor (`dokuman_sorgusu`); ek model çağrısı yok, çeviri iki dalın da
 önüne alındı. Çeviri koparsa Türkçe soruya düşülür.
 
-**Vektör aramasında alaka eşiği yok.** `query_relevant_chunks` her zaman "en
-yakın 5"i döner; konuyla tamamen ilgisiz bir soruda bile 5 parça gelir. Yani
-`dokuman_parca_sayisi: 5` "ilgili kaynak bulundu" demek DEĞİL — model sonra
-bunları yetersiz görüp reddeder ve bu, boşuna bir Qwen çağrısı (~4-8 sn)
-demektir. Eşik koymadan önce `timing-diagnostics` çıktısındaki
-`en_yakin_dokuman_uzakligi` değerlerini gerçek sorularla toplayın; eşik
-tahminle seçilirse ilgili kaynaklar da elenir.
+**Vektör aramasının kendi alaka eşiği yok**, bu yüzden `rag.py` uzaklığa göre
+eliyor (`DOCUMENT_MAX_DISTANCE`, varsayılan 0.95). Chroma her zaman "en yakın
+5"i döner; ilgisiz bir soruda bile 5 parça gelir ve eşik olmadan bunlar ~2000
+token'lık bağlam olarak modele gidip boşuna 8-14 saniye beklenirdi. Eşik canlı
+ölçümle seçildi: konusu kapsanan soruda 0.595-0.672, kapsanmayan soruda
+1.142-1.235. Uzaklıklar teşhis çıktısına **elemeden önce** yazılır, yoksa eşik
+ileride ayarlanamaz.
 
 **Asistan hızı: soru başına dört ağ turu var** (vektör araması, Qwen çevirisi,
 NCBI, Qwen cevabı) ve eskiden hepsi sırayla çalışıp süreleri toplanıyordu.

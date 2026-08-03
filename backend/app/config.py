@@ -18,6 +18,12 @@ class Settings(BaseSettings):
 
     clinical_docs_folder: str = "./data/clinical_docs"
     vector_db_dir: str = "./data/vectorstore"
+    # Vektör aramasında bir parçanın "ilgili" sayılması için üst uzaklık sınırı
+    # (L2). Canlı ölçüm: konusu kapsanan soruda 0.595-0.672, kapsanmayan soruda
+    # 1.142-1.235; yerel deneyde tamamen alakasız soru 2.02. 0.95 iki kümenin
+    # ortasında ve her iki tarafa da payı var. Sorgulara göre ayarlanabilsin
+    # diye ortam değişkeni: yükseltmek daha çok parça geçirir, düşürmek eler.
+    document_max_distance: float = 0.95
 
     checkin_photos_folder: str = "./data/checkins"
 

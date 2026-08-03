@@ -2,6 +2,17 @@
   base = "mobile"
   command = "npm run build:web"
   publish = "dist"
+  # Sadece web tarafını (mobile/) ya da bu dosyayı etkileyen değişikliklerde
+  # derle. Depoda backend/ ile mobile/ birlikte duruyor ve backend'e yapılan
+  # her push da Netlify'da bir yayın tetikliyordu; web çıktısı hiç
+  # değişmediği halde kredi harcanıyordu (ücretsiz planda her yayın 15 kredi,
+  # aylık kota 300).
+  #
+  # Netlify kuralı: komut 0 dönerse derleme İPTAL edilir, sıfırdan farklı
+  # dönerse devam eder. `git diff --quiet` fark yoksa 0, varsa 1 döner -
+  # yani istediğimiz davranışın tam karşılığı. Komut base dizininde
+  # (mobile/) çalıştığı için "." mobile/ demek.
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ../netlify.toml"
 
 [build.environment]
   NODE_VERSION = "20"

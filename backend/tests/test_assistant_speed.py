@@ -33,7 +33,7 @@ def _stub(monkeypatch, *, doc_delay=0.0, pubmed_delay=0.0, qwen_delay=0.0, chunk
             {"pmid": "1", "title": "T", "journal": "J", "year": "2024", "authors": "A", "url": "u"}
         ]
 
-    def fake_qwen(system_prompt, user_prompt, temperature=0.2, max_tokens=None):
+    def fake_qwen(system_prompt, user_prompt, temperature=0.2, max_tokens=None, meta=None):
         time.sleep(qwen_delay)
         if system_prompt is rag.PUBMED_QUERY_SYSTEM_PROMPT:
             return "aspirin cardiovascular\nantiplatelet therapy"
@@ -295,6 +295,48 @@ def test_answers_when_sources_are_related_but_incomplete(monkeypatch):
     assert was_answered
     assert answer == partial
     assert len(sources) == 2
+
+
+def test_truncated_answer_is_marked_not_passed_off_as_complete(monkeypatch):
+    """Uzunluk sınırına takılan cevap cümlenin ortasında bitiyor; klinik bir
+    metnin yarım kaldığı anlaşılmazsa eksik bilgi tam sanılır."""
+    _stub(monkeypatch)
+
+    def truncating_qwen(system_prompt, user_prompt, temperature=0.2, max_tokens=None, meta=None):
+        if system_prompt is rag.PUBMED_QUERY_SYSTEM_PROMPT:
+            return "aspirin cardiovascular\nantiplatelet"
+        if meta is not None:
+            meta["finish_reason"] = "length"
+        return "Efferon LPS septik şokta mortaliteyi azaltır ve hemodinamik stabil"
+
+    monkeypatch.setattr(rag, "ask_qwen", truncating_qwen)
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        timings = {}
+        answer, _, was_answered = rag.answer_question(db, "soru", None, timings)
+    finally:
+        db.close()
+
+    assert was_answered  # eldeki kısmi cevap yine gösterilmeli
+    assert "tamamlanamadı" in answer
+    assert timings["cevap_kesildi"] is True
+
+
+def test_complete_answer_is_not_marked_as_truncated(monkeypatch):
+    _stub(monkeypatch)
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        timings = {}
+        answer, _, _ = rag.answer_question(db, "soru", None, timings)
+    finally:
+        db.close()
+
+    assert "tamamlanamadı" not in answer
+    assert "cevap_kesildi" not in timings
 
 
 def test_empty_model_output_is_reported_not_shown_blank(monkeypatch):

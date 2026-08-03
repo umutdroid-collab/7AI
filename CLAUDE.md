@@ -123,7 +123,11 @@ NCBI, Qwen cevabı) ve eskiden hepsi sırayla çalışıp süreleri toplanıyord
 "yavaş" denildiğinde `POST /assistant/timing-diagnostics` ile hangi aşamanın
 baskın olduğuna bak, tahminle optimize etme. Kalan süre neredeyse tamamen
 Qwen'in cevabı üretmesidir; oradaki kollar kod değil **ayar**:
-`QWEN_MAX_TOKENS` (üretilen token sayısı süreyle doğru orantılı),
+`QWEN_MAX_TOKENS` (üretilen token sayısı süreyle doğru orantılı — ama Türkçe
+token açısından pahalı: 600'de 1715 karakterlik bir cevap cümle ortasında
+kesildi, 1200 uygun bir taban. Sınıra takılan cevap `finish_reason: "length"`
+ile yakalanıp hem kullanıcıya bildiriliyor hem teşhiste `cevap_kesildi`
+olarak görünüyor; sessizce yarım klinik cevap göstermek tehlikeliydi),
 `QWEN_MODEL` (küçük/hızlı model) ve Qwen3 ailesindeyseniz
 `QWEN_DISABLE_THINKING=true` (varsayılan "düşünme" modu cevaptan önce
 görünmeyen uzun bir muhakeme üretir). `QWEN_TIMEOUT_SECONDS` de eklendi:

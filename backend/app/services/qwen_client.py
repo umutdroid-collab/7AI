@@ -26,11 +26,17 @@ def ask_qwen(
     user_prompt: str,
     temperature: float = 0.2,
     max_tokens: int | None = None,
+    meta: dict | None = None,
 ) -> str:
     """max_tokens verilmezse ayarlardaki üst sınır kullanılır. Üretilen her
     token ayrı ayrı beklendiği için bu sınır doğrudan cevap süresini etkiler;
     kısa çıktı beklenen çağrılarda (örn. PubMed anahtar kelimesi) küçük bir
-    değer verilmeli."""
+    değer verilmeli.
+
+    meta verilirse `finish_reason` oraya yazılır. "length" gelmesi cevabın
+    sınıra takılıp YARIDA KESİLDİĞİ anlamına gelir; bunu bilmeden yarım bir
+    klinik cevap tam sanılabiliyordu.
+    """
     client = get_client()
     extra_body = {"enable_thinking": False} if settings.qwen_disable_thinking else None
     response = client.chat.completions.create(
@@ -43,4 +49,7 @@ def ask_qwen(
         ],
         extra_body=extra_body,
     )
-    return response.choices[0].message.content or ""
+    choice = response.choices[0]
+    if meta is not None:
+        meta["finish_reason"] = choice.finish_reason
+    return choice.message.content or ""

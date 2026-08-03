@@ -39,6 +39,7 @@ KURALLAR:
    Saha çalışanı için eksik ama kaynaklı bir cevap, hiç cevap vermemekten iyidir. Kaynakta olmayan bir sonucu ASLA uydurma.
 5. Cevap verirken mutlaka kaynak göster. Klinik çalışmalardan alıntı yaparken [Kaynak: dosya adı, sayfa X] formatını, PubMed'den alıntı yaparken [PubMed PMID: xxxxx] formatını kullan.
 6. Türkçe, net ve profesyonel bir dille cevap ver. Tıbbi tavsiye verme; literatürü özetle ve kaynak göster.
+7. ÖZLÜ yaz: en fazla 250 kelime. Önce doğrudan cevabı ver, sonra dayanağını. Uzunluk sınırına takılıp cümlenin ortasında kesilmektense kısa ve tamamlanmış bir cevap yaz.
 """
 
 PUBMED_QUERY_SYSTEM_PROMPT = (
@@ -211,8 +212,11 @@ def _answer_question(
     context = _build_context(chunks, pubmed_results)
     user_prompt = f"SORU: {question}\n\n{context}"
 
+    answer_meta: dict = {}
     try:
-        raw_answer = _timed(timings, "qwen_cevap_ms", lambda: ask_qwen(SYSTEM_PROMPT, user_prompt))
+        raw_answer = _timed(
+            timings, "qwen_cevap_ms", lambda: ask_qwen(SYSTEM_PROMPT, user_prompt, meta=answer_meta)
+        )
     except Exception:
         logger.exception("Qwen çağrısı başarısız oldu")
         error_message = (
@@ -238,6 +242,20 @@ def _answer_question(
         )
         _log(db, user_id, question, empty_message, [], was_answered=False)
         return empty_message, [], False
+
+    if answer_meta.get("finish_reason") == "length":
+        # Cevap token sınırına takılıp cümlenin ortasında kesildi. Klinik bir
+        # metnin yarım kaldığının anlaşılmaması tehlikeli: eksik cümle tam
+        # sanılabiliyor. Hem kullanıcıya söyle hem teşhis çıktısına yaz.
+        logger.warning(
+            "Cevap uzunluk sınırında kesildi (QWEN_MAX_TOKENS=%s)", settings.qwen_max_tokens
+        )
+        timings["cevap_kesildi"] = True
+        raw_answer = raw_answer.rstrip() + (
+            "\n\n_(Not: Cevap uzunluk sınırına takıldığı için tamamlanamadı. "
+            "Daha kısa/odaklı bir soru sorabilir ya da yöneticinizden sınırı "
+            "artırmasını isteyebilirsiniz.)_"
+        )
 
     sources = [
         SourceOut(type="document", title=c["title"] or c["filename"], detail=f"{c['filename']} - sayfa {c['page']}")

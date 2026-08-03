@@ -75,3 +75,24 @@ def test_deactivated_user_cannot_log_in_or_use_token(client, admin):
         headers={"x-forwarded-for": "8.8.8.9"},
     )
     assert r.status_code == 403
+
+
+def test_timestamps_are_sent_with_utc_marker(client, admin):
+    """Zaman damgaları saat dilimi işareti olmadan gönderilirse tarayıcı
+    bunları yerel saat sanıyor ve İstanbul'da her şey 3 saat geride
+    görünüyordu."""
+    hospital = client.post("/hospitals", json={"name": "H"}, headers=admin).json()
+    product = client.post("/products", json={"name": "P", "reference_no": "R"}, headers=admin).json()
+    item = client.post(
+        "/stock", json={"product_id": product["id"], "lot_no": "L1"}, headers=admin
+    ).json()
+
+    # Zaman damgası taşıyan başlıca uçlar
+    assert item["created_at"].endswith("+00:00")
+    assert client.get(f"/stock/{item['id']}/history", headers=admin).json()[0]["moved_at"].endswith("+00:00")
+    assert client.post("/backups/run", headers=admin).status_code == 200
+    assert client.get("/backups", headers=admin).json()[0]["created_at"].endswith("+00:00")
+
+    # Silme işlemi bir günlük kaydı üretir; onun zaman damgası da işaretli olmalı.
+    client.delete(f"/hospitals/{hospital['id']}", headers=admin)
+    assert client.get("/audit-logs", headers=admin).json()[0]["created_at"].endswith("+00:00")

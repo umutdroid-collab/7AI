@@ -9,7 +9,7 @@ import shutil
 import sqlite3
 import tempfile
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -98,7 +98,9 @@ def list_backups() -> list[dict]:
         {
             "filename": p.name,
             "size_bytes": p.stat().st_size,
-            "created_at": datetime.fromtimestamp(p.stat().st_mtime).isoformat(),
+            # Saat dilimi işaretiyle: işaretsiz gönderilirse tarayıcı yerel
+            # saat sanıp yanlış saat gösteriyor (bkz. schemas.UtcDateTime).
+            "created_at": datetime.fromtimestamp(p.stat().st_mtime, tz=timezone.utc).isoformat(),
         }
         for p in files
     ]

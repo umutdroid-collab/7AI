@@ -1,8 +1,26 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
+from typing import Annotated
 
-from pydantic import BaseModel, EmailStr, model_validator
+from pydantic import BaseModel, EmailStr, PlainSerializer, model_validator
 
 from app.models import InvoiceStatus, MovementType, StockItemStatus, UserRole
+
+
+def _mark_as_utc(value: datetime) -> str:
+    """Saatleri UTC olduğu belirtilerek gönderir.
+
+    Veritabanında datetime.utcnow() ile saat dilimi bilgisi olmadan
+    saklanıyor. İşaretsiz gönderilirse ("2026-07-28T12:00:00") tarayıcı bunu
+    YEREL saat kabul ediyor ve İstanbul'da (UTC+3) her şey 3 saat geride
+    görünüyordu. Sonuna UTC işareti eklenince tarayıcı doğru çeviriyor.
+    """
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.isoformat()
+
+
+# Çıkış şemalarındaki tüm zaman damgaları bu tipi kullanmalı.
+UtcDateTime = Annotated[datetime, PlainSerializer(_mark_as_utc, return_type=str)]
 
 
 # --- Auth ---
@@ -106,8 +124,8 @@ class StockItemOut(BaseModel):
     status: StockItemStatus
     hospital: HospitalOut | None
     carried_by: UserOut | None
-    created_at: datetime
-    updated_at: datetime
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
     days_to_expiry: int | None = None
 
     class Config:
@@ -127,7 +145,7 @@ class StockMovementOut(BaseModel):
     to_hospital_id: int | None
     to_vehicle_user_id: int | None
     moved_by_user_id: int | None
-    moved_at: datetime
+    moved_at: UtcDateTime
     note: str | None
 
     class Config:
@@ -171,7 +189,7 @@ class NotificationOut(BaseModel):
     stock_item_id: int | None
     title: str
     message: str
-    created_at: datetime
+    created_at: UtcDateTime
     is_read: bool
 
     class Config:
@@ -187,7 +205,7 @@ class CheckInOut(BaseModel):
     comment: str | None
     latitude: float | None
     longitude: float | None
-    checked_in_at: datetime
+    checked_in_at: UtcDateTime
 
     class Config:
         from_attributes = True
@@ -222,7 +240,7 @@ class ClinicalDocumentOut(BaseModel):
     title: str | None
     num_chunks: int
     file_size: int = 0
-    indexed_at: datetime
+    indexed_at: UtcDateTime
 
     class Config:
         from_attributes = True
@@ -277,7 +295,7 @@ class SalesTargetOut(BaseModel):
     period_start: date
     period_end: date
     note: str | None
-    created_at: datetime
+    created_at: UtcDateTime
     progress: int = 0
     contributors: list[SalesTargetContributor] = []
 
@@ -292,7 +310,7 @@ class AuditLogOut(BaseModel):
     entity_type: str
     entity_id: str | None
     summary: str
-    created_at: datetime
+    created_at: UtcDateTime
 
     class Config:
         from_attributes = True

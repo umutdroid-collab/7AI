@@ -6,6 +6,7 @@ from functools import lru_cache
 
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.models import ChatLog
 from app.schemas import SourceOut
 from app.services.pubmed import search_pubmed
@@ -13,6 +14,7 @@ from app.services.qwen_client import ask_qwen
 from app.services.vector_store import query_relevant_chunks
 
 logger = logging.getLogger("rag")
+settings = get_settings()
 
 REFUSAL_MARKER = "İLGİSİZ_SORU"
 REFUSAL_MESSAGE = (
@@ -149,6 +151,19 @@ def _answer_question(
     if REFUSAL_MARKER in raw_answer:
         _log(db, user_id, question, REFUSAL_MESSAGE, [], was_answered=False)
         return REFUSAL_MESSAGE, [], False
+
+    if not raw_answer.strip():
+        # Model boş içerik döndürdü. En olası sebep token bütçesinin bitmesi:
+        # "düşünme" (thinking) modu açıkken muhakeme de üretilen token
+        # sayısına dahil oluyor ve cevaba sıra gelmeden QWEN_MAX_TOKENS
+        # tükenebiliyor. Boş baloncuk göstermek yerine sebebini söyle.
+        logger.warning("Qwen boş cevap döndürdü (QWEN_MAX_TOKENS=%s yetersiz olabilir)", settings.qwen_max_tokens)
+        empty_message = (
+            "Model bu soru için boş bir cevap döndürdü. Cevap uzunluğu sınırı "
+            "(QWEN_MAX_TOKENS) yetersiz olabilir. Lütfen yöneticinizle iletişime geçin."
+        )
+        _log(db, user_id, question, empty_message, [], was_answered=False)
+        return empty_message, [], False
 
     sources = [
         SourceOut(type="document", title=c["title"] or c["filename"], detail=f"{c['filename']} - sayfa {c['page']}")

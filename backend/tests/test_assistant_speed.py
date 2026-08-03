@@ -107,6 +107,24 @@ def test_total_time_recorded_even_when_no_sources(monkeypatch):
     assert "qwen_cevap_ms" not in timings  # kaynak yoksa model hiç çağrılmamalı
 
 
+def test_empty_model_output_is_reported_not_shown_blank(monkeypatch):
+    """qwen-plus gibi "düşünme" modu olan modellerde muhakeme de token
+    bütçesinden yeniyor; bütçe cevaba sıra gelmeden bitince model boş içerik
+    döndürüyor ve kullanıcı boş bir baloncuk görüyordu."""
+    _stub(monkeypatch)
+    monkeypatch.setattr(rag, "ask_qwen", lambda *a, **k: "   ")
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        answer, _, was_answered = rag.answer_question(db, "aspirin", None, {})
+    finally:
+        db.close()
+
+    assert not was_answered
+    assert "QWEN_MAX_TOKENS" in answer
+
+
 def test_timing_diagnostics_endpoint_is_admin_only(client, admin, employee, monkeypatch):
     _stub(monkeypatch)
     assert client.post("/assistant/timing-diagnostics", json={"question": "s"}, headers=employee).status_code == 403

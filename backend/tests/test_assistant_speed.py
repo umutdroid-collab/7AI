@@ -264,6 +264,8 @@ def test_total_time_recorded_even_when_no_sources(monkeypatch):
     assert not was_answered
     assert "toplam_ms" in timings
     assert "qwen_cevap_ms" not in timings  # kaynak yoksa model hiç çağrılmamalı
+    # "Yanlış soru sordunuz" değil, "bu konuda kaynağım yok" denmeli.
+    assert answer == rag.NO_SOURCES_MESSAGE
 
 
 def test_answers_when_sources_are_related_but_incomplete(monkeypatch):

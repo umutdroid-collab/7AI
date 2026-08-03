@@ -24,6 +24,17 @@ REFUSAL_MESSAGE = (
     "Lütfen ürün veya hastalıkla ilgili bir soru sorun."
 )
 
+# Hiç kaynak bulunamadığında REFUSAL_MESSAGE gösteriliyordu; o metin "yanlış
+# soru sordunuz" anlamına geliyor ve geçerli bir ürün sorusu soran kullanıcıyı
+# yanıltıyordu. Sorunun kendisi değil, elimizdeki içerik yetersiz.
+NO_SOURCES_MESSAGE = (
+    "Bu konuda cevap verebileceğim bir kaynak bulamadım: ne yüklü klinik "
+    "çalışmalarda ilgili bir bölüm çıktı, ne de PubMed'de ilgili bir yayın. "
+    "Soruyu farklı kelimelerle (örneğin ürünün kullanıldığı klinik durumu "
+    "ekleyerek) tekrar deneyebilirsiniz. Konu sizce kapsanıyor olmalıysa, "
+    "ilgili klinik çalışmanın yöneticiniz tarafından yüklenmesi gerekir."
+)
+
 SYSTEM_PROMPT = f"""Sen bir tıbbi cihaz/ürün şirketinin saha çalışanlarına yardımcı olan bir klinik literatür asistanısın.
 
 KURALLAR:
@@ -206,8 +217,10 @@ def _answer_question(
     chunks, pubmed_results = _gather_sources(question, timings)
 
     if not chunks and not pubmed_results:
-        _log(db, user_id, question, REFUSAL_MESSAGE, [], was_answered=False)
-        return REFUSAL_MESSAGE, [], False
+        # Soru geçerli olabilir; elimizde kaynak yok. Ayrımı kullanıcıya da
+        # yansıt - "yanlış soru sordunuz" demek yanıltıcıydı.
+        _log(db, user_id, question, NO_SOURCES_MESSAGE, [], was_answered=False)
+        return NO_SOURCES_MESSAGE, [], False
 
     context = _build_context(chunks, pubmed_results)
     user_prompt = f"SORU: {question}\n\n{context}"

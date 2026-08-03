@@ -185,13 +185,13 @@ Tam liste ve açıklamalar: `backend/.env.example`. Kritik olanlar:
 
 | Değişken | Not |
 |---|---|
-| `SECRET_KEY`, `SEED_ADMIN_PASSWORD` | Ayarlı olduklarını doğrula; yoksa depoda görünen varsayılanlar kullanılır |
+| `SECRET_KEY`, `SEED_ADMIN_PASSWORD` | Railway'de ayarlı (doğrulandı 03.08.2026); yoksa depoda görünen varsayılanlara düşer |
 | `DATABASE_URL` | `sqlite:////app/data/app.db` (Volume) |
 | `RESEND_API_KEY`, `SMTP_FROM` | E-posta özeti için |
 | `EVOBULUT_USERNAME/PASSWORD/APP_NAME` | Fatura senkronizasyonu (saatte bir) |
 | `QWEN_BASE_URL/API_KEY/MODEL` | Alibaba Model Studio (token başına ücretli) |
 | `QWEN_MAX_TOKENS` (900), `QWEN_TIMEOUT_SECONDS` (60), `QWEN_DISABLE_THINKING` (false) | Asistan hızının ayarla çevrilen kolları |
-| `CORS_ORIGINS` | Şu an `*`; `https://saha.7medikal.com` ile daraltılabilir |
+| `CORS_ORIGINS` | `https://saha.7medikal.com` ile daraltıldı |
 
 ## Teşhis uçları (hepsi admin)
 

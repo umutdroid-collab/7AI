@@ -26,6 +26,13 @@ for (const file of ["icon-192.png", "icon-512.png", "apple-touch-icon.png"]) {
   fs.copyFileSync(path.join(ASSETS_DIR, file), path.join(OUT_DIR, file));
 }
 
+// SPA yönlendirmesi çıktı klasörünün İÇİNE yazılır. Aynı kural netlify.toml'da
+// da duruyor ama orası yalnızca Netlify'ın kendi derlemesinde okunur; hazır
+// dist klasörü elle yüklendiğinde (kredi harcamamak için yaptığımız yöntem)
+// devreye girmez ve alt adreslerin yenilenmesi 404 döner. _redirects dosyası
+// yayın klasöründen okunduğu için her iki yolda da geçerli olur.
+fs.writeFileSync(path.join(OUT_DIR, "_redirects"), "/*    /index.html   200\n");
+
 const indexPath = path.join(OUT_DIR, "index.html");
 let html = fs.readFileSync(indexPath, "utf8");
 

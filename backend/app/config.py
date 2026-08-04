@@ -8,7 +8,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./data/app.db"
     secret_key: str = "insecure-dev-secret-change-me"
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 480
+    # 24 saat: saha ekibi gün içinde tekrar tekrar giriş yapmak zorunda
+    # kalmasın diye. Süre dolduğunda istemci 401 alıp giriş ekranına döner.
+    access_token_expire_minutes: int = 1440
     cors_origins: str = "*"
 
     skt_warning_days: int = 90

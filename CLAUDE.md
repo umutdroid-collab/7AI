@@ -149,6 +149,16 @@ check-in fotoğrafının amacını boşa çıkarıyordu. Web'de `WebCameraModal`
 (expo-camera) canlı kameradan kare yakalar; galeriye erişim yolu yok.
 Native'de `launchCameraAsync` zaten sadece kamera.
 
+**Oturum 24 saat, "Beni hatırla" varsayılan kapalı.** Token süresi
+`ACCESS_TOKEN_EXPIRE_MINUTES` (varsayılan 1440); **Railway'de bu değişken ayrıca
+tanımlıysa varsayılan geçersizdir**, süre değişmiyorsa önce oraya bakın (aynı
+tuzak geliştirme makinesindeki `.env` için de geçerli). "Beni hatırla"
+işaretlenirse e-posta + şifre `secureStorage`'a yazılır: native'de
+Keychain/Keystore, **web'de localStorage** — yani tarayıcıda düz metin durur ve
+aynı kaynaktaki her betik okuyabilir. Bu yüzden kutu varsayılan olarak kapalı,
+kayıt yalnızca başarılı girişten sonra yapılıyor ve işaret kaldırıldığı anda
+saklananlar siliniyor.
+
 **Check-in fotoğrafları sunucuda küçültülür** (`services/images.py`), istemcide
 değil: eski uygulama sürümleri, farklı tarayıcılar ve doğrudan API'ye yapılan
 istekler yine ham dosya gönderir, o yüzden küçültme yükleme anında ve şartsız

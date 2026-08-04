@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -12,13 +12,28 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { apiErrorMessage } from "../../api/client";
 import { colors, spacing } from "../../theme";
+import {
+  clearRememberedLogin,
+  loadRememberedLogin,
+  saveRememberedLogin,
+} from "../../utils/rememberedLogin";
 
 export default function LoginScreen() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    loadRememberedLogin().then((saved) => {
+      if (!saved.remember) return;
+      setRemember(true);
+      setEmail(saved.email);
+      setPassword(saved.password);
+    });
+  }, []);
 
   async function handleSubmit() {
     setError(null);
@@ -29,11 +44,26 @@ export default function LoginScreen() {
     setIsSubmitting(true);
     try {
       await login(email.trim(), password);
+      // Kayıt yalnızca giriş BAŞARILI olduktan sonra yapılır; yanlış yazılmış
+      // bir şifreyi saklayıp her açılışta tekrar denetmenin anlamı yok.
+      if (remember) {
+        await saveRememberedLogin(email.trim(), password);
+      } else {
+        await clearRememberedLogin();
+      }
     } catch (e) {
       setError(apiErrorMessage(e));
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleToggleRemember() {
+    const next = !remember;
+    setRemember(next);
+    // İşaret kaldırıldığı anda saklananlar silinsin - kullanıcı "artık
+    // hatırlama" dediğinde bir sonraki girişi beklemek gerekmemeli.
+    if (!next) await clearRememberedLogin();
   }
 
   return (
@@ -65,6 +95,23 @@ export default function LoginScreen() {
           placeholder="••••••••"
           placeholderTextColor={colors.textMuted}
         />
+
+        <TouchableOpacity
+          style={styles.rememberRow}
+          onPress={handleToggleRemember}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: remember }}
+        >
+          <View style={[styles.checkbox, remember && styles.checkboxChecked]}>
+            {remember && <Text style={styles.checkboxTick}>✓</Text>}
+          </View>
+          <View style={styles.rememberTextWrap}>
+            <Text style={styles.rememberText}>Beni hatırla</Text>
+            <Text style={styles.rememberHint}>
+              Giriş bilgileriniz bu cihazda saklanır ve oturumunuz 24 saat açık kalır.
+            </Text>
+          </View>
+        </TouchableOpacity>
 
         {error && <Text style={styles.error}>{error}</Text>}
 
@@ -121,6 +168,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  rememberRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: spacing(2.5),
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing(1.5),
+  },
+  checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
+  checkboxTick: { color: "#0f172a", fontSize: 14, fontWeight: "700", lineHeight: 18 },
+  rememberTextWrap: { flex: 1 },
+  rememberText: { color: colors.text, fontSize: 14, fontWeight: "600" },
+  rememberHint: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   error: {
     color: colors.danger,
     marginTop: spacing(2),

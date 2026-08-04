@@ -9,6 +9,36 @@ def test_login_success_and_wrong_password(client):
     assert r.status_code == 401
 
 
+def test_default_session_length_is_24_hours():
+    """Saha ekibi gün içinde tekrar tekrar giriş yapmak zorunda kalmasın.
+
+    Ortamdan değil doğrudan sınıf varsayılanından okunur: geliştirme
+    makinesindeki .env ya da Railway'deki eski bir değişken varsayılanı ezerse
+    test bunu fark etmez, o yüzden burada gönderilen varsayılan denetlenir.
+    """
+    from app.config import Settings
+
+    assert Settings.model_fields["access_token_expire_minutes"].default == 24 * 60
+
+
+def test_token_expiry_follows_the_configured_value(client):
+    from datetime import datetime, timezone
+
+    from jose import jwt
+
+    from app.config import get_settings
+
+    settings = get_settings()
+    token = client.post(
+        "/auth/login", data={"username": "admin@test.com", "password": "testpass123"}
+    ).json()["access_token"]
+
+    claims = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    remaining = datetime.fromtimestamp(claims["exp"], tz=timezone.utc) - datetime.now(timezone.utc)
+    expected = settings.access_token_expire_minutes / 60
+    assert expected - 0.05 < remaining.total_seconds() / 3600 <= expected
+
+
 def test_login_lockout_after_five_failures(client):
     ip = {"x-forwarded-for": "5.5.5.5"}
     for _ in range(5):

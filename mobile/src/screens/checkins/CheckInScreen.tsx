@@ -23,6 +23,7 @@ import CheckInCard from "../../components/CheckInCard";
 import HospitalPickerModal from "../../components/HospitalPickerModal";
 import ErrorRetry from "../../components/ErrorRetry";
 import WebCameraModal from "../../components/WebCameraModal";
+import { isSupported as isSpeechSupported, startListening } from "../../utils/speechToText";
 
 type ViewMode = "mine" | "team";
 
@@ -40,7 +41,17 @@ export default function CheckInScreen() {
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isCameraVisible, setIsCameraVisible] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const hasSetDefaultViewMode = useRef(false);
+  const recognitionRef = useRef<{ stop: () => void } | null>(null);
+  // Dikte başlarken kutuda yazan metin: tanınan metin konuşma sürerken defalarca
+  // güncellendiği için her seferinde bunun üstüne yazılır, yoksa aynı cümle
+  // arka arkaya eklenir.
+  const commentBeforeDictation = useRef("");
+
+  useEffect(() => {
+    return () => recognitionRef.current?.stop();
+  }, []);
 
   useEffect(() => {
     secureStorage.getItemAsync(TOKEN_KEY).then(setToken);
@@ -107,6 +118,34 @@ export default function CheckInScreen() {
     await submitCheckIn(result.assets[0].uri, result.assets[0].file);
   }
 
+  function handleToggleDictation() {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    commentBeforeDictation.current = comment;
+    const handle = startListening({
+      onText: (text) => {
+        const previous = commentBeforeDictation.current;
+        setComment(previous ? `${previous.trimEnd()} ${text}` : text);
+      },
+      onError: (message) => {
+        setIsListening(false);
+        Alert.alert("Ses kaydı", message);
+      },
+      onEnd: () => {
+        setIsListening(false);
+        recognitionRef.current = null;
+      },
+    });
+
+    if (handle) {
+      recognitionRef.current = handle;
+      setIsListening(true);
+    }
+  }
+
   async function handleWebCapture(photo: { uri: string; blob: Blob }) {
     setIsCameraVisible(false);
     await submitCheckIn(photo.uri, photo.blob);
@@ -171,6 +210,19 @@ export default function CheckInScreen() {
             onChangeText={setComment}
             multiline
           />
+
+          {/* Native'de klavyenin kendi mikrofon tuşu zaten aynı işi görüyor;
+              tuş yalnızca tarayıcı desteği varken gösterilir. */}
+          {isSpeechSupported() && (
+            <TouchableOpacity
+              style={[styles.dictateButton, isListening && styles.dictateButtonActive]}
+              onPress={handleToggleDictation}
+            >
+              <Text style={[styles.dictateText, isListening && styles.dictateTextActive]}>
+                {isListening ? "⏹ Dinleniyor... (durdurmak için dokunun)" : "🎤 Konuşarak yaz"}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity style={styles.checkInButton} onPress={handleCheckIn} disabled={isSubmitting}>
             {isSubmitting ? (
@@ -254,6 +306,20 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
     marginBottom: spacing(1.5),
   },
+  dictateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 10,
+    paddingVertical: spacing(1.25),
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing(1.5),
+  },
+  dictateButtonActive: { backgroundColor: colors.danger, borderColor: colors.danger },
+  dictateText: { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
+  dictateTextActive: { color: "#fff" },
   checkInButton: {
     backgroundColor: colors.primary,
     borderRadius: 10,

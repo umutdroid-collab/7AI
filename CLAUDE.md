@@ -149,6 +149,13 @@ check-in fotoğrafının amacını boşa çıkarıyordu. Web'de `WebCameraModal`
 (expo-camera) canlı kameradan kare yakalar; galeriye erişim yolu yok.
 Native'de `launchCameraAsync` zaten sadece kamera.
 
+**Check-in notunda dikte tarayıcının kendi motoruyla** (`utils/speechToText.ts`,
+Web Speech API): ücretsiz, ek bağımlılık yok, ses bizim sunucumuza gitmiyor.
+Native'de tuş gösterilmez — klavyenin mikrofon tuşu zaten aynı işi görüyor ve
+bir dikte kütüphanesi native derleme gerektirirdi. Firefox desteklemiyor,
+Chrome tanımayı kendi sunucusunda yaptığı için internet şart; desteklenmeyen
+yerde `isSupported()` false döner ve tuş hiç çizilmez.
+
 **Oturum 24 saat, "Beni hatırla" varsayılan kapalı.** Token süresi
 `ACCESS_TOKEN_EXPIRE_MINUTES` (varsayılan 1440); **Railway'de bu değişken ayrıca
 tanımlıysa varsayılan geçersizdir**, süre değişmiyorsa önce oraya bakın (aynı

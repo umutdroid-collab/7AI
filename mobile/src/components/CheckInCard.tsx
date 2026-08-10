@@ -13,11 +13,13 @@ export default function CheckInCard({
   token,
   showEmployee,
   onDeleted,
+  navigation,
 }: {
   checkin: CheckIn;
   token: string | null;
   showEmployee: boolean;
   onDeleted?: () => void;
+  navigation?: any;
 }) {
   const { user } = useAuth();
   const [webPhotoUri, setWebPhotoUri] = useState<string | null>(null);
@@ -126,6 +128,22 @@ export default function CheckInCard({
             <Text style={styles.mapLink}>📍 Haritada Gör</Text>
           </TouchableOpacity>
         )}
+        {/* Dikkat çeken bir yorum listede aşağı kayıp kayboluyordu; buradan
+            hatırlatıcıya dönüştürülüp tarihi geldiğinde özet e-postasında
+            karşımıza çıkıyor. */}
+        {user?.role === "admin" && navigation && (
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("FollowUps", {
+                checkinId: checkin.id,
+                aboutUserId: checkin.user.id,
+                initialNote: checkin.comment ?? "",
+              })
+            }
+          >
+            <Text style={styles.followUpLink}>🔔 Takibe Al</Text>
+          </TouchableOpacity>
+        )}
       </View>
       {user?.role === "admin" && (
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} disabled={isDeleting}>
@@ -160,6 +178,7 @@ const styles = StyleSheet.create({
   time: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   comment: { color: colors.textMuted, fontSize: 12, marginTop: spacing(0.5), fontStyle: "italic" },
   mapLink: { color: colors.primary, fontSize: 12, marginTop: spacing(0.5), fontWeight: "600" },
+  followUpLink: { color: colors.warning, fontSize: 12, marginTop: spacing(0.5), fontWeight: "600" },
   deleteButton: {
     paddingHorizontal: spacing(1.5),
     paddingVertical: spacing(1),

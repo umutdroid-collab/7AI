@@ -2,7 +2,7 @@ import os
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
@@ -12,6 +12,7 @@ from app.models import CheckIn, Hospital, User, UserRole
 from app.schemas import CheckInOut, CheckInUpdate
 from app.utils import safe_image_filename, unique_destination
 from app.services import audit, images
+from app.services.excel import build_workbook
 
 router = APIRouter(prefix="/checkins", tags=["checkins"])
 settings = get_settings()
@@ -67,14 +68,20 @@ async def create_checkin(
     return checkin
 
 
-@router.get("", response_model=list[CheckInOut])
-def list_checkins(
-    user_id: int | None = None,
-    hospital_id: int | None = None,
-    day: date | None = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+def _filtered_checkin_query(
+    db: Session,
+    current_user: User,
+    user_id: int | None,
+    hospital_id: int | None,
+    day: date | None,
+    start_date: date | None,
+    end_date: date | None,
 ):
+    """Liste ve Excel dışa aktarımı aynı filtreleri kullansın diye ortak.
+
+    Yetki filtresi burada: çalışan yalnızca kendi girişlerini görür, yönetici
+    hepsini. Bu kural iki yerde ayrı ayrı yazılsaydı birinde unutulabilirdi.
+    """
     query = db.query(CheckIn).options(joinedload(CheckIn.user), joinedload(CheckIn.hospital))
 
     if current_user.role != UserRole.ADMIN:
@@ -85,11 +92,73 @@ def list_checkins(
     if hospital_id is not None:
         query = query.filter(CheckIn.hospital_id == hospital_id)
     if day is not None:
-        start = datetime.combine(day, datetime.min.time())
-        end = datetime.combine(day, datetime.max.time())
-        query = query.filter(CheckIn.checked_in_at >= start, CheckIn.checked_in_at <= end)
+        query = query.filter(
+            CheckIn.checked_in_at >= datetime.combine(day, datetime.min.time()),
+            CheckIn.checked_in_at <= datetime.combine(day, datetime.max.time()),
+        )
+    if start_date is not None:
+        query = query.filter(CheckIn.checked_in_at >= datetime.combine(start_date, datetime.min.time()))
+    if end_date is not None:
+        query = query.filter(CheckIn.checked_in_at <= datetime.combine(end_date, datetime.max.time()))
 
-    return query.order_by(CheckIn.checked_in_at.desc()).limit(300).all()
+    return query.order_by(CheckIn.checked_in_at.desc())
+
+
+@router.get("", response_model=list[CheckInOut])
+def list_checkins(
+    user_id: int | None = None,
+    hospital_id: int | None = None,
+    day: date | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return (
+        _filtered_checkin_query(db, current_user, user_id, hospital_id, day, start_date, end_date)
+        .limit(300)
+        .all()
+    )
+
+
+EXPORT_COLUMNS = ["Tarih", "Saat", "Çalışan", "Hastane", "Şehir", "Not", "Konum"]
+
+
+@router.get("/export")
+def export_checkins(
+    user_id: int | None = None,
+    hospital_id: int | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Ziyaret raporunu Excel olarak verir. Fotoğraf yok - rapor belirli bir
+    aralıkta kimin nereye gittiğini ve ne not düştüğünü görmek için."""
+    checkins = _filtered_checkin_query(
+        db, current_user, user_id, hospital_id, None, start_date, end_date
+    ).all()
+
+    rows = [
+        [
+            c.checked_in_at.strftime("%d.%m.%Y"),
+            c.checked_in_at.strftime("%H:%M"),
+            c.user.full_name,
+            c.hospital.name,
+            c.hospital.city or "",
+            c.comment or "",
+            f"{c.latitude:.5f}, {c.longitude:.5f}" if c.latitude is not None and c.longitude is not None else "",
+        ]
+        for c in checkins
+    ]
+
+    buffer = build_workbook("Ziyaretler", EXPORT_COLUMNS, rows)
+    filename = f"ziyaret-raporu-{date.today().isoformat()}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 def _get_checkin_or_404(checkin_id: int, db: Session) -> CheckIn:

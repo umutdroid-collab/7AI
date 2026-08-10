@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
 from app.database import SessionLocal
-from app.models import Invoice, InvoiceStatus, StockItem, StockItemStatus, User
+from app.models import FollowUp, Invoice, InvoiceStatus, StockItem, StockItemStatus, User
 from app.services.email import EmailNotConfigured, is_configured, send_email
 
 logger = logging.getLogger("daily_digest")
@@ -67,7 +67,23 @@ def collect_digest(db: Session) -> dict:
         .all()
     )
 
-    return {"today": today, "overdue": overdue, "upcoming": upcoming, "expiring": expiring}
+    # Tarihi gelmiş (ya da geçmiş) takip notları. Notun amacı zaten
+    # "unutmayayım" olduğu için hatırlatma tam da burada yapılmalı.
+    due_follow_ups = (
+        db.query(FollowUp)
+        .options(joinedload(FollowUp.about_user), joinedload(FollowUp.checkin))
+        .filter(FollowUp.is_done.is_(False), FollowUp.remind_on <= today)
+        .order_by(FollowUp.remind_on)
+        .all()
+    )
+
+    return {
+        "today": today,
+        "overdue": overdue,
+        "upcoming": upcoming,
+        "expiring": expiring,
+        "follow_ups": due_follow_ups,
+    }
 
 
 def _render(digest: dict) -> tuple[str, str, str]:
@@ -76,8 +92,11 @@ def _render(digest: dict) -> tuple[str, str, str]:
     overdue: list[Invoice] = digest["overdue"]
     upcoming: list[Invoice] = digest["upcoming"]
     expiring: list[StockItem] = digest["expiring"]
+    follow_ups: list[FollowUp] = digest["follow_ups"]
 
     headline_parts = []
+    if follow_ups:
+        headline_parts.append(f"{len(follow_ups)} hatırlatıcı")
     if overdue:
         headline_parts.append(f"{len(overdue)} vadesi geçmiş fatura")
     if upcoming:
@@ -109,6 +128,31 @@ def _render(digest: dict) -> tuple[str, str, str]:
             f'border:1px solid #e5e7eb;border-radius:8px;">{row_html}</table>'
         )
 
+    # Hatırlatıcılar en üstte: yöneticinin kendi eliyle "bunu unutma" dediği
+    # kalemler, otomatik üretilen uyarılardan önce gelmeli.
+    add_section(
+        "Hatırlatıcılar",
+        "#7c3aed",
+        [
+            (
+                f.note,
+                " - ".join(
+                    part
+                    for part in [
+                        f.about_user.full_name if f.about_user else None,
+                        f.checkin.hospital.name if f.checkin else None,
+                        (
+                            f"{(today - f.remind_on).days} gün önceydi"
+                            if f.remind_on < today
+                            else "bugün"
+                        ),
+                    ]
+                    if part
+                ),
+            )
+            for f in follow_ups
+        ],
+    )
     add_section(
         "Vadesi Geçmiş Faturalar",
         "#dc2626",
@@ -194,7 +238,12 @@ def send_daily_digest() -> dict:
     db = SessionLocal()
     try:
         digest = collect_digest(db)
-        total = len(digest["overdue"]) + len(digest["upcoming"]) + len(digest["expiring"])
+        total = (
+            len(digest["overdue"])
+            + len(digest["upcoming"])
+            + len(digest["expiring"])
+            + len(digest["follow_ups"])
+        )
         if total == 0:
             logger.info("Günlük özet: bildirilecek bir şey yok, e-posta gönderilmedi")
             return {"ok": True, "sent": False, "message": "Bildirilecek kalem yok"}

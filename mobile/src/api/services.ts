@@ -4,6 +4,7 @@ import {
   ChatResponse,
   CheckIn,
   ClinicalDocument,
+  FollowUp,
   Hospital,
   Invoice,
   Notification,
@@ -351,7 +352,15 @@ export async function createCheckIn(
   return data;
 }
 
-export async function fetchCheckIns(params?: { user_id?: number; hospital_id?: number; day?: string }) {
+export interface CheckInQueryParams {
+  user_id?: number;
+  hospital_id?: number;
+  day?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export async function fetchCheckIns(params?: CheckInQueryParams) {
   const { data } = await api.get<CheckIn[]>("/checkins", { params });
   return data;
 }
@@ -363,6 +372,46 @@ export async function fetchCheckIns(params?: { user_id?: number; hospital_id?: n
  */
 export function checkinPhotoUrl(id: number, boyut: "onizleme" | "tam" = "onizleme") {
   return `/checkins/${id}/photo?boyut=${boyut}`;
+}
+
+export function checkinExportUrl(params: CheckInQueryParams) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") qs.append(key, String(value));
+  });
+  const suffix = qs.toString();
+  return `/checkins/export${suffix ? `?${suffix}` : ""}`;
+}
+
+// --- Follow-ups (yöneticinin takip notları / hatırlatıcılar) ---
+
+export async function fetchFollowUps(includeDone = false) {
+  const { data } = await api.get<FollowUp[]>("/follow-ups", {
+    params: { include_done: includeDone },
+  });
+  return data;
+}
+
+export async function createFollowUp(payload: {
+  note: string;
+  remind_on: string;
+  checkin_id?: number;
+  about_user_id?: number;
+}) {
+  const { data } = await api.post<FollowUp>("/follow-ups", payload);
+  return data;
+}
+
+export async function updateFollowUp(
+  id: number,
+  payload: { note?: string; remind_on?: string; is_done?: boolean }
+) {
+  const { data } = await api.patch<FollowUp>(`/follow-ups/${id}`, payload);
+  return data;
+}
+
+export async function deleteFollowUp(id: number) {
+  await api.delete(`/follow-ups/${id}`);
 }
 
 export async function updateCheckInComment(id: number, comment: string | null) {

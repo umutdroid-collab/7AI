@@ -14,7 +14,13 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import Alert from "../../utils/alert";
 import secureStorage from "../../utils/secureStorage";
-import { createCheckIn, fetchCheckIns, fetchHospitals } from "../../api/services";
+import {
+  checkinExportUrl,
+  createCheckIn,
+  fetchCheckIns,
+  fetchHospitals,
+} from "../../api/services";
+import { dateStampedFilename, downloadFile } from "../../utils/download";
 import { CheckIn, Hospital } from "../../types";
 import { colors, spacing } from "../../theme";
 import { apiErrorMessage, TOKEN_KEY } from "../../api/client";
@@ -27,7 +33,7 @@ import { isSupported as isSpeechSupported, startListening } from "../../utils/sp
 
 type ViewMode = "mine" | "team";
 
-export default function CheckInScreen() {
+export default function CheckInScreen({ navigation }: any) {
   const { user } = useAuth();
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState<number | null>(null);
@@ -37,6 +43,12 @@ export default function CheckInScreen() {
 
   const [viewMode, setViewMode] = useState<ViewMode>("mine");
   const [checkins, setCheckins] = useState<CheckIn[]>([]);
+  // Rapor filtreleri: hangi hastane ve hangi tarih aralığı.
+  const [filterHospitalId, setFilterHospitalId] = useState<number | null>(null);
+  const [isFilterPickerVisible, setIsFilterPickerVisible] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -72,18 +84,42 @@ export default function CheckInScreen() {
     }, [])
   );
 
+  const buildParams = useCallback(() => {
+    const params: Record<string, string | number> = {};
+    if (viewMode === "mine" && user) params.user_id = user.id;
+    if (filterHospitalId) params.hospital_id = filterHospitalId;
+    // Yarım girilmiş tarih sunucuya gitmesin; tam biçim beklenmiyor diye
+    // istek hata döndürürdü.
+    if (/^\d{4}-\d{2}-\d{2}$/.test(startDate)) params.start_date = startDate;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(endDate)) params.end_date = endDate;
+    return params;
+  }, [viewMode, user, filterHospitalId, startDate, endDate]);
+
   const load = useCallback(async () => {
     setError(null);
     try {
-      const params = viewMode === "mine" && user ? { user_id: user.id } : undefined;
-      const data = await fetchCheckIns(params);
+      const data = await fetchCheckIns(buildParams());
       setCheckins(data);
     } catch (e) {
       setError(apiErrorMessage(e));
     } finally {
       setIsLoading(false);
     }
-  }, [viewMode, user]);
+  }, [buildParams]);
+
+  async function handleExportExcel() {
+    setIsExporting(true);
+    try {
+      await downloadFile(
+        checkinExportUrl(buildParams()),
+        dateStampedFilename("ziyaret-raporu", "xlsx")
+      );
+    } catch (e) {
+      Alert.alert("Hata", apiErrorMessage(e));
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -250,6 +286,57 @@ export default function CheckInScreen() {
           </View>
         )}
 
+        <View style={styles.filterCard}>
+          <Text style={styles.filterTitle}>Rapor filtresi</Text>
+
+          <TouchableOpacity style={styles.hospitalSelect} onPress={() => setIsFilterPickerVisible(true)}>
+            <Text style={filterHospitalId ? styles.hospitalSelectText : styles.hospitalSelectPlaceholder}>
+              {filterHospitalId
+                ? hospitals.find((h) => h.id === filterHospitalId)?.name
+                : "Tüm hastaneler"}
+            </Text>
+            <Text style={styles.hospitalSelectChevron}>▾</Text>
+          </TouchableOpacity>
+
+          {filterHospitalId && (
+            <TouchableOpacity onPress={() => setFilterHospitalId(null)}>
+              <Text style={styles.clearFilter}>Hastane filtresini temizle</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.dateRow}>
+            <TextInput
+              style={[styles.input, styles.dateInput]}
+              placeholder="Başlangıç (YYYY-AA-GG)"
+              placeholderTextColor={colors.textMuted}
+              value={startDate}
+              onChangeText={setStartDate}
+            />
+            <TextInput
+              style={[styles.input, styles.dateInput]}
+              placeholder="Bitiş (YYYY-AA-GG)"
+              placeholderTextColor={colors.textMuted}
+              value={endDate}
+              onChangeText={setEndDate}
+            />
+          </View>
+
+          <TouchableOpacity style={styles.exportButton} onPress={handleExportExcel} disabled={isExporting}>
+            {isExporting ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : (
+              <Text style={styles.exportButtonText}>⬇ Excel Raporu İndir</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <HospitalPickerModal
+          visible={isFilterPickerVisible}
+          hospitals={hospitals}
+          onSelect={setFilterHospitalId}
+          onClose={() => setIsFilterPickerVisible(false)}
+        />
+
         <Text style={styles.sectionTitle}>{viewMode === "team" ? "Ekip Girişleri" : "Geçmişim"}</Text>
 
         {isLoading ? (
@@ -260,7 +347,14 @@ export default function CheckInScreen() {
           <Text style={styles.empty}>Henüz giriş kaydı yok</Text>
         ) : (
           checkins.map((c) => (
-            <CheckInCard key={c.id} checkin={c} token={token} showEmployee={viewMode === "team"} onDeleted={load} />
+            <CheckInCard
+              key={c.id}
+              checkin={c}
+              token={token}
+              showEmployee={viewMode === "team"}
+              onDeleted={load}
+              navigation={navigation}
+            />
           ))
         )}
       </ScrollView>
@@ -340,6 +434,42 @@ const styles = StyleSheet.create({
   segmentActive: { backgroundColor: colors.primary },
   segmentText: { color: colors.textMuted, fontSize: 13, fontWeight: "700" },
   segmentTextActive: { color: "#0f172a" },
+  filterCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: spacing(2),
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing(2),
+  },
+  filterTitle: { color: colors.text, fontSize: 14, fontWeight: "700", marginBottom: spacing(1.5) },
+  clearFilter: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: spacing(1.5),
+  },
+  dateRow: { flexDirection: "row", gap: spacing(1) },
+  input: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 10,
+    paddingHorizontal: spacing(1.5),
+    paddingVertical: spacing(1.25),
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+    fontSize: 13,
+  },
+  dateInput: { flex: 1 },
+  exportButton: {
+    marginTop: spacing(1.5),
+    borderRadius: 10,
+    paddingVertical: spacing(1.25),
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  exportButtonText: { color: colors.primary, fontWeight: "700", fontSize: 13 },
   sectionTitle: { color: colors.text, fontSize: 15, fontWeight: "700", marginBottom: spacing(1) },
   error: { color: colors.danger, textAlign: "center", marginTop: spacing(2) },
   empty: { color: colors.textMuted, textAlign: "center", marginTop: spacing(2) },

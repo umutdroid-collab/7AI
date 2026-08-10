@@ -303,6 +303,55 @@ class SalesTargetOut(BaseModel):
         from_attributes = True
 
 
+# --- Follow-ups (yöneticinin takip notları) ---
+
+class FollowUpCreate(BaseModel):
+    note: str
+    checkin_id: int | None = None
+    about_user_id: int | None = None
+    remind_on: date
+
+    @model_validator(mode="after")
+    def note_must_not_be_blank(self):
+        if not self.note.strip():
+            raise ValueError("Not boş olamaz")
+        return self
+
+
+class FollowUpUpdate(BaseModel):
+    note: str | None = None
+    remind_on: date | None = None
+    about_user_id: int | None = None
+    is_done: bool | None = None
+
+
+class FollowUpCheckInSummary(BaseModel):
+    """Notun doğduğu check-in'in kısa künyesi - listede bağlamı görebilmek
+    için; fotoğraf ve konum burada gereksiz."""
+
+    id: int
+    hospital_name: str
+    user_name: str
+    comment: str | None
+    checked_in_at: UtcDateTime
+
+
+class FollowUpOut(BaseModel):
+    id: int
+    note: str
+    remind_on: date
+    is_done: bool
+    done_at: UtcDateTime | None
+    created_at: UtcDateTime
+    about_user: UserOut | None
+    created_by: UserOut
+    checkin: FollowUpCheckInSummary | None = None
+    days_until_due: int | None = None
+
+    class Config:
+        from_attributes = True
+
+
 class AuditLogOut(BaseModel):
     id: int
     user_name: str

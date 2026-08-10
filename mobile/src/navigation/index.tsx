@@ -25,6 +25,7 @@ import ProfileScreen from "../screens/profile/ProfileScreen";
 import BulkUploadScreen from "../screens/profile/BulkUploadScreen";
 import BackupsScreen from "../screens/profile/BackupsScreen";
 import AuditLogScreen from "../screens/profile/AuditLogScreen";
+import FollowUpsScreen from "../screens/profile/FollowUpsScreen";
 import ClinicalDocumentsScreen from "../screens/assistant/ClinicalDocumentsScreen";
 import PersonelTakipScreen from "../screens/targets/PersonelTakipScreen";
 import AddSalesTargetScreen from "../screens/targets/AddSalesTargetScreen";
@@ -62,6 +63,7 @@ function StockStack() {
       <StockStackNav.Screen name="Backups" component={BackupsScreen} options={{ title: "Yedekler" }} />
       <StockStackNav.Screen name="AuditLog" component={AuditLogScreen} options={{ title: "İşlem Günlüğü" }} />
       <StockStackNav.Screen name="ClinicalDocuments" component={ClinicalDocumentsScreen} options={{ title: "Klinik Çalışmalar" }} />
+      <StockStackNav.Screen name="FollowUps" component={FollowUpsScreen} options={{ title: "Hatırlatıcılar" }} />
     </StockStackNav.Navigator>
   );
 }
@@ -81,6 +83,7 @@ function InvoiceStack() {
       <InvoiceStackNav.Screen name="Backups" component={BackupsScreen} options={{ title: "Yedekler" }} />
       <InvoiceStackNav.Screen name="AuditLog" component={AuditLogScreen} options={{ title: "İşlem Günlüğü" }} />
       <InvoiceStackNav.Screen name="ClinicalDocuments" component={ClinicalDocumentsScreen} options={{ title: "Klinik Çalışmalar" }} />
+      <InvoiceStackNav.Screen name="FollowUps" component={FollowUpsScreen} options={{ title: "Hatırlatıcılar" }} />
     </InvoiceStackNav.Navigator>
   );
 }
@@ -98,6 +101,7 @@ function AssistantStack() {
       <AssistantStackNav.Screen name="Backups" component={BackupsScreen} options={{ title: "Yedekler" }} />
       <AssistantStackNav.Screen name="AuditLog" component={AuditLogScreen} options={{ title: "İşlem Günlüğü" }} />
       <AssistantStackNav.Screen name="ClinicalDocuments" component={ClinicalDocumentsScreen} options={{ title: "Klinik Çalışmalar" }} />
+      <AssistantStackNav.Screen name="FollowUps" component={FollowUpsScreen} options={{ title: "Hatırlatıcılar" }} />
     </AssistantStackNav.Navigator>
   );
 }
@@ -115,6 +119,7 @@ function CheckInStack() {
       <CheckInStackNav.Screen name="Backups" component={BackupsScreen} options={{ title: "Yedekler" }} />
       <CheckInStackNav.Screen name="AuditLog" component={AuditLogScreen} options={{ title: "İşlem Günlüğü" }} />
       <CheckInStackNav.Screen name="ClinicalDocuments" component={ClinicalDocumentsScreen} options={{ title: "Klinik Çalışmalar" }} />
+      <CheckInStackNav.Screen name="FollowUps" component={FollowUpsScreen} options={{ title: "Hatırlatıcılar" }} />
     </CheckInStackNav.Navigator>
   );
 }
@@ -133,6 +138,7 @@ function TargetsStack() {
       <TargetsStackNav.Screen name="Backups" component={BackupsScreen} options={{ title: "Yedekler" }} />
       <TargetsStackNav.Screen name="AuditLog" component={AuditLogScreen} options={{ title: "İşlem Günlüğü" }} />
       <TargetsStackNav.Screen name="ClinicalDocuments" component={ClinicalDocumentsScreen} options={{ title: "Klinik Çalışmalar" }} />
+      <TargetsStackNav.Screen name="FollowUps" component={FollowUpsScreen} options={{ title: "Hatırlatıcılar" }} />
     </TargetsStackNav.Navigator>
   );
 }

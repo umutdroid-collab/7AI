@@ -149,6 +149,14 @@ check-in fotoğrafının amacını boşa çıkarıyordu. Web'de `WebCameraModal`
 (expo-camera) canlı kameradan kare yakalar; galeriye erişim yolu yok.
 Native'de `launchCameraAsync` zaten sadece kamera.
 
+**Hatırlatıcılar (`follow_ups`) yöneticinin toplantı defteri.** Çalışanın
+check-in yorumunda dikkat çeken bir şey listede aşağı kaydıkça kayboluyordu;
+kart üzerindeki "Takibe Al" o yorumu bağımsız bir kayda dönüştürür. Tarihi
+gelen (veya geçen) açık notlar **günlük özet e-postasının en üstünde** çıkar —
+hatırlatmanın yapıldığı yer orası, ayrı bir bildirim kanalı yok. Tamamlananlar
+listeden düşer ama silinmez; `include_done=true` ile görülür. Notun doğduğu
+check-in silinirse not kalır, bağlantı boşa düşer.
+
 **Check-in notunda dikte tarayıcının kendi motoruyla** (`utils/speechToText.ts`,
 Web Speech API): ücretsiz, ek bağımlılık yok, ses bizim sunucumuza gitmiyor.
 Native'de tuş gösterilmez — klavyenin mikrofon tuşu zaten aynı işi görüyor ve

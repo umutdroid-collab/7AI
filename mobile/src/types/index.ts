@@ -124,6 +124,27 @@ export interface CheckIn {
   checked_in_at: string;
 }
 
+export interface FollowUpCheckInSummary {
+  id: number;
+  hospital_name: string;
+  user_name: string;
+  comment: string | null;
+  checked_in_at: string;
+}
+
+export interface FollowUp {
+  id: number;
+  note: string;
+  remind_on: string;
+  is_done: boolean;
+  done_at: string | null;
+  created_at: string;
+  about_user: User | null;
+  created_by: User;
+  checkin: FollowUpCheckInSummary | null;
+  days_until_due: number | null;
+}
+
 export interface SalesTargetContributor {
   user_id: number;
   full_name: string;

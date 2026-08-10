@@ -253,6 +253,16 @@ export default function ProfileScreen() {
             <Text style={styles.bulkUploadChevron}>›</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.bulkUploadCard} onPress={() => navigation.navigate("FollowUps")}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bulkUploadTitle}>Hatırlatıcılar</Text>
+              <Text style={styles.bulkUploadSubtitle}>
+                Toplantıda takip edilecek notlar; tarihi gelince günlük özette hatırlatılır
+              </Text>
+            </View>
+            <Text style={styles.bulkUploadChevron}>›</Text>
+          </TouchableOpacity>
+
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Kullanıcılar</Text>
             <TouchableOpacity onPress={() => setShowAddUser((v) => !v)}>

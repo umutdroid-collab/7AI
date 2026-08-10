@@ -267,3 +267,33 @@ class SalesTarget(Base):
 
     product: Mapped["Product"] = relationship()
     assigned_user: Mapped["User | None"] = relationship(foreign_keys=[assigned_user_id])
+
+
+class FollowUp(Base):
+    """Yöneticinin toplantıda takip etmek üzere kendine düştüğü not.
+
+    Çıkış noktası: bir çalışan check-in yorumunda dikkat çekici bir şey yazıyor
+    ("X hastanesi ürünü beğenmedi" gibi) ve bu, yorumlar arasında kaybolup
+    gidiyordu. Not buradan bağımsız bir kayda dönüşüyor, tarihi geldiğinde
+    günlük özet e-postasında hatırlatılıyor ve tamamlandı olarak
+    işaretlenebiliyor.
+    """
+
+    __tablename__ = "follow_ups"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    note: Mapped[str] = mapped_column(Text)
+    # Hangi check-in'den doğdu (varsa). Check-in silinirse not kalsın diye
+    # ON DELETE davranışı yok; ilişki kopunca alan boşa düşer.
+    checkin_id: Mapped[int | None] = mapped_column(ForeignKey("check_ins.id"), nullable=True)
+    # Notun ilgili olduğu çalışan - toplantıda "kim hakkında" sorusunun cevabı.
+    about_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    remind_on: Mapped[date] = mapped_column(Date, index=True)
+    is_done: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    done_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    checkin: Mapped["CheckIn | None"] = relationship()
+    about_user: Mapped["User | None"] = relationship(foreign_keys=[about_user_id])
+    created_by: Mapped["User"] = relationship(foreign_keys=[created_by_user_id])

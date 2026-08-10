@@ -11,7 +11,11 @@ export default function AddProductScreen({ navigation, route }: any) {
   const fromAddStock: boolean = !!route.params?.fromAddStock;
 
   const [name, setName] = useState(editingProduct?.name ?? "");
-  const [referenceNo, setReferenceNo] = useState(editingProduct?.reference_no ?? "");
+  // Stok ekranında aranıp bulunamayan metin ref no olarak taşınır; kullanıcı
+  // aynı kodu bir daha yazmasın diye.
+  const [referenceNo, setReferenceNo] = useState(
+    editingProduct?.reference_no ?? route.params?.initialReferenceNo ?? ""
+  );
   const [ubbNo, setUbbNo] = useState(editingProduct?.ubb_no ?? "");
   const [sutKodu, setSutKodu] = useState(editingProduct?.sut_kodu ?? "");
   const [manufacturer, setManufacturer] = useState(editingProduct?.manufacturer ?? "");

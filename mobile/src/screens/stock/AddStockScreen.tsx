@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import Alert from "../../utils/alert";
 import { useFocusEffect } from "@react-navigation/native";
 import { createStockItem, fetchHospitals, fetchProducts } from "../../api/services";
@@ -12,6 +12,7 @@ export default function AddStockScreen({ navigation, route }: any) {
   const [products, setProducts] = useState<Product[]>([]);
   const [productQuery, setProductQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [searchState, setSearchState] = useState<"idle" | "searching" | "done" | "error">("idle");
 
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState<number | null>(null);
@@ -38,10 +39,22 @@ export default function AddStockScreen({ navigation, route }: any) {
   useEffect(() => {
     if (!productQuery.trim()) {
       setProducts([]);
+      setSearchState("idle");
       return;
     }
+    setSearchState("searching");
     const timeout = setTimeout(() => {
-      fetchProducts(productQuery).then(setProducts).catch(() => {});
+      fetchProducts(productQuery)
+        .then((found) => {
+          setProducts(found);
+          setSearchState("done");
+        })
+        .catch(() => {
+          setProducts([]);
+          // Hata da sessiz kalmamalı: eskiden arama patlasa bile ekranda
+          // "sonuç yok" ile aynı boşluk görünüyordu.
+          setSearchState("error");
+        });
     }, 250);
     return () => clearTimeout(timeout);
   }, [productQuery]);
@@ -95,23 +108,50 @@ export default function AddStockScreen({ navigation, route }: any) {
             value={productQuery}
             onChangeText={setProductQuery}
           />
-          <FlatList
-            data={products}
-            keyExtractor={(p) => String(p.id)}
-            style={{ maxHeight: 160 }}
-            renderItem={({ item }) => (
-              <TouchableOpacity style={styles.productOption} onPress={() => setSelectedProduct(item)}>
-                <Text style={styles.productOptionText}>{item.name}</Text>
-                <Text style={styles.productOptionMeta}>
-                  {item.reference_no}
-                  {item.sut_kodu ? `  •  SUT: ${item.sut_kodu}` : ""}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
+          {/* FlatList yerine düz View: React Native Web'de iç içe listeler
+              yükseklik alamayıp görünmez olabiliyor (aynı sorun fatura filtre
+              çiplerinde de yaşanmıştı). Sonuç sayısı zaten küçük. */}
+          {products.length > 0 && (
+            <ScrollView style={styles.productList} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+              {products.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.productOption}
+                  onPress={() => setSelectedProduct(item)}
+                >
+                  <Text style={styles.productOptionText}>{item.name}</Text>
+                  <Text style={styles.productOptionMeta}>
+                    {item.reference_no}
+                    {item.sut_kodu ? `  •  SUT: ${item.sut_kodu}` : ""}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+
+          {/* Eskiden sonuç yokken ekranda hiçbir şey görünmüyordu; kullanıcı
+              "ürün yok" ile "arama bozuk"u ayırt edemiyordu. */}
+          {searchState === "searching" && <Text style={styles.searchHint}>Aranıyor...</Text>}
+          {searchState === "error" && (
+            <Text style={styles.searchError}>Ürün araması başarısız oldu. Bağlantınızı kontrol edin.</Text>
+          )}
+          {searchState === "done" && products.length === 0 && (
+            <Text style={styles.searchHint}>
+              "{productQuery.trim()}" için ürün bulunamadı. Ürün listesinde kayıtlı değilse aşağıdan
+              ekleyebilirsiniz.
+            </Text>
+          )}
+
           <TouchableOpacity
             style={styles.addProductButton}
-            onPress={() => navigation.navigate("AddProduct", { fromAddStock: true })}
+            onPress={() =>
+              navigation.navigate("AddProduct", {
+                fromAddStock: true,
+                // Aranan metni ref no olarak taşı - kullanıcı aynı kodu ikinci
+                // kez yazmak zorunda kalmasın.
+                initialReferenceNo: productQuery.trim(),
+              })
+            }
           >
             <Text style={styles.addProductButtonText}>+ Yeni Ürün Ekle</Text>
           </TouchableOpacity>
@@ -189,6 +229,9 @@ const styles = StyleSheet.create({
   },
   selectedProductText: { color: colors.text, fontWeight: "600", flex: 1 },
   changeText: { color: colors.primary, fontSize: 12 },
+  productList: { maxHeight: 200 },
+  searchHint: { color: colors.textMuted, fontSize: 12, marginTop: spacing(0.5), lineHeight: 17 },
+  searchError: { color: colors.danger, fontSize: 12, marginTop: spacing(0.5) },
   productOption: {
     backgroundColor: colors.surface,
     borderRadius: 10,

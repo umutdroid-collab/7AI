@@ -4,8 +4,9 @@ import { NavigationContainer, DarkTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useAuth } from "../context/AuthContext";
-import { colors } from "../theme";
+import { colors, typography } from "../theme";
 import HeaderProfileButton from "../components/HeaderProfileButton";
+import Icon, { IconName } from "../components/Icon";
 
 import LoginScreen from "../screens/auth/LoginScreen";
 import StockListScreen from "../screens/stock/StockListScreen";
@@ -143,21 +144,44 @@ function TargetsStack() {
   );
 }
 
+const TABS: { name: string; label: string; icon: IconName; component: React.ComponentType<any> }[] = [
+  { name: "Stok", label: "Stok Takip", icon: "stock", component: StockStack },
+  { name: "Fatura", label: "Fatura Takip", icon: "invoice", component: InvoiceStack },
+  { name: "Asistan", label: "Klinik Asistan", icon: "assistant", component: AssistantStack },
+  { name: "Takip", label: "Rapor", icon: "location", component: CheckInStack },
+  { name: "Personel", label: "Hedefler", icon: "targets", component: TargetsStack },
+];
+
 function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          // Tasarımda sekme sırası 64px; güvenli alan payını React Navigation
+          // kendisi ekliyor (iOS çentiği yüzünden sabit yükseklik verilmiyor).
+          height: 64,
+          paddingTop: 8,
+          paddingBottom: 8,
+        },
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarInactiveTintColor: colors.textDim,
+        tabBarLabelStyle: { ...typography.tabLabel, marginTop: 2 },
       }}
     >
-      <Tab.Screen name="Stok" component={StockStack} options={{ tabBarLabel: "Stok Takip" }} />
-      <Tab.Screen name="Fatura" component={InvoiceStack} options={{ tabBarLabel: "Fatura Takip" }} />
-      <Tab.Screen name="Asistan" component={AssistantStack} options={{ tabBarLabel: "Klinik Asistan" }} />
-      <Tab.Screen name="Takip" component={CheckInStack} options={{ tabBarLabel: "Rapor" }} />
-      <Tab.Screen name="Personel" component={TargetsStack} options={{ tabBarLabel: "Hedefler" }} />
+      {TABS.map((tab) => (
+        <Tab.Screen
+          key={tab.name}
+          name={tab.name}
+          component={tab.component}
+          options={{
+            tabBarLabel: tab.label,
+            tabBarIcon: ({ color }) => <Icon name={tab.icon} size={20} color={color} />,
+          }}
+        />
+      ))}
     </Tab.Navigator>
   );
 }

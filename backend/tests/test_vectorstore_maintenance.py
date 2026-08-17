@@ -164,3 +164,107 @@ def test_compressed_document_is_not_reindexed(client, admin, tmp_path):
 
 def test_document_compression_is_admin_only(client, employee):
     assert client.post("/assistant/documents/compress-existing", headers=employee).status_code == 403
+
+
+# --- Vektör indeksi yedekten çıkarıldı -------------------------------------
+#
+# Canlı ölçümde 205 MB'lık verinin 127.5'i vektör indeksiydi ve içeriği
+# sıkıştırılamıyor. Tamamı klinik PDF'lerden yeniden üretilebildiği için
+# yedeğe konmuyor; karşılığında geri yükleme onu yeniden kurmak zorunda.
+
+
+def _zip_names(path):
+    import zipfile
+
+    with zipfile.ZipFile(path) as zf:
+        return zf.namelist()
+
+
+def test_backup_no_longer_carries_the_vector_index(client, admin, tmp_path):
+    from app.config import get_settings
+    from app.services import backup
+
+    _image_heavy_pdf(tmp_path / "calisma.pdf", tmp_path)
+    with open(tmp_path / "calisma.pdf", "rb") as f:
+        client.post(
+            "/assistant/documents/upload",
+            headers=admin,
+            files={"file": ("calisma.pdf", f, "application/pdf")},
+        )
+
+    filename = client.post("/backups/run", headers=admin).json()["filename"]
+    names = _zip_names(os.path.join(get_settings().backup_dir, filename))
+
+    assert not any(n.startswith("vectorstore/") for n in names)
+    # Kaynak PDF'ler yedekte kalmalı - indeks onlardan yeniden üretiliyor.
+    assert any(n.startswith("clinical_docs/") for n in names)
+    assert "app.db" in names
+
+
+def test_restore_rebuilds_the_index_from_the_restored_pdfs(client, admin, tmp_path):
+    from app.services import backup
+
+    _image_heavy_pdf(tmp_path / "calisma.pdf", tmp_path)
+    with open(tmp_path / "calisma.pdf", "rb") as f:
+        client.post(
+            "/assistant/documents/upload",
+            headers=admin,
+            files={"file": ("calisma.pdf", f, "application/pdf")},
+        )
+    filename = client.post("/backups/run", headers=admin).json()["filename"]
+
+    # Diski kaybetme taklidi: indeks yok.
+    from app.config import get_settings
+    import shutil as _shutil
+
+    vector_dir = get_settings().vector_db_dir
+    vector_store.reset_client()
+    if os.path.isdir(vector_dir):
+        _shutil.rmtree(vector_dir)
+
+    result = backup.restore_backup(filename, rebuild_async=False)
+
+    assert result["vektor_indeksi_yeniden_uretiliyor"] is True
+    chunks = vector_store.query_relevant_chunks("sepsis IL-6", n_results=3)
+    assert chunks, "geri yüklemeden sonra vektör araması boş döndü"
+
+
+def test_restore_reports_the_rebuild_to_the_caller(client, admin):
+    """Asistan birkaç dakika kaynaksız cevap verecek; kullanıcı bunu
+    yanıttan görmeli."""
+    filename = client.post("/backups/run", headers=admin).json()["filename"]
+
+    r = client.post(f"/backups/{filename}/restore", params={"confirm": True}, headers=admin)
+
+    assert r.status_code == 200
+    assert r.json()["vektor_indeksi_yeniden_uretiliyor"] is True
+
+
+def test_old_backup_with_an_index_still_restores_it(client, admin, tmp_path):
+    """R2'deki eski yedekler indeksi içeriyor; onu kullanmak yeniden
+    üretmekten hızlı, o yol kapanmamalı."""
+    import zipfile
+
+    from app.config import get_settings
+    from app.services import backup
+
+    old = os.path.join(get_settings().backup_dir, "yedek-20260101-000000-0.zip")
+    os.makedirs(get_settings().backup_dir, exist_ok=True)
+    with zipfile.ZipFile(old, "w") as zf:
+        zf.writestr("vectorstore/chroma.sqlite3", b"eski indeks")
+
+    result = backup.restore_backup("yedek-20260101-000000-0.zip", rebuild_async=False)
+
+    assert result["vektor_indeksi_yeniden_uretiliyor"] is False
+    restored = os.path.join(get_settings().vector_db_dir, "chroma.sqlite3")
+    assert open(restored, "rb").read() == b"eski indeks"
+
+
+def test_size_report_marks_what_is_in_the_backup(client, admin):
+    body = client.get("/backups/size-report", headers=admin).json()
+
+    by_name = {f["klasor"]: f for f in body["klasorler"]}
+    assert by_name["vectorstore"]["yedege_dahil"] is False
+    assert by_name["clinical_docs"]["yedege_dahil"] is True
+    assert by_name["invoices"]["yedege_dahil"] is True
+    assert by_name["checkins"]["yedege_dahil"] is True

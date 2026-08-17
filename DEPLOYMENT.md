@@ -152,6 +152,11 @@ sessizce Railway'de çalışmayan SMTP yoluna düşer.
 4. `POST /backups/{dosya}/restore?confirm=true` → veritabanı ve tüm yüklenen
    dosyalar geri gelir. Geri yükleme, üzerine yazmadan **önce** mevcut
    durumun bir güvenlik yedeğini alır.
+5. Yanıtta `vektor_indeksi_yeniden_uretiliyor: true` görürsünüz: vektör
+   indeksi yedeğe konmuyor, klinik PDF'lerden yeniden üretiliyor. **Bu
+   bitene kadar klinik asistan doküman bulamaz** (PubMed çalışır). İlerlemeyi
+   `GET /backups/restore-status` gösterir; `calisiyor: false` olduğunda
+   `parca` üretilen parça sayısını verir.
 
 ### Senaryo B — Elinizde yalnızca indirilmiş bir .zip var
 
@@ -171,8 +176,10 @@ yedektir; `git push` ile yeni bir uzak depoya aktarılabilir.
 - [ ] Giriş yapılabiliyor mu (`SEED_ADMIN_*` yeni kurulumda yeni yönetici
       açar; **eski kullanıcılar yedekten gelir**, eski şifreleriyle)
 - [ ] Beş sekme de veri getiriyor mu
-- [ ] Klinik asistan cevap veriyor mu — vermezse vektör indeksi bozulmuştur,
-      geri yükleme onu diskte değiştirir; servisi bir kez yeniden başlatın
+- [ ] `GET /backups/restore-status` → `calisiyor: false`, `hata: null`
+- [ ] Klinik asistan kaynak göstererek cevap veriyor mu — vermiyorsa yeniden
+      üretim bitmemiş ya da hata almıştır (`restore-status`'a bakın);
+      elle tetiklemek için `POST /assistant/reindex`
 - [ ] `GET /invoices/evobulut-diagnostics` → `ok: true`
 - [ ] `POST /notifications/email-test` → mail geliyor mu
 - [ ] `GET /backups/offsite/status` → `erisim: true`
@@ -183,9 +190,14 @@ yedektir; `git push` ile yeni bir uzak depoya aktarılabilir.
 ## 5. Yedekleme nasıl çalışıyor
 
 - Her **pazar 03:00** (Europe/Istanbul) bir .zip üretilir: veritabanı +
-  fatura PDF'leri + klinik çalışmalar + check-in fotoğrafları + vektör
-  indeksi. Ayrıca açılışta diskteki en yeni yedeğe bakılır, 7 günden eskiyse
-  iki dakika sonrasına tek seferlik telafi işi konur.
+  fatura PDF'leri + klinik çalışmalar + check-in fotoğrafları. Ayrıca
+  açılışta diskteki en yeni yedeğe bakılır, 7 günden eskiyse iki dakika
+  sonrasına tek seferlik telafi işi konur.
+- **Vektör indeksi yedeğe konmuyor.** Verinin yarısından fazlasıydı ve
+  içeriği sıkıştırılamıyor; tamamı klinik PDF'lerden yeniden üretilebildiği
+  için yedeklemek, zaten yedeklediğimiz veriden türetilen bir şeyi
+  yedeklemek olurdu. Geri yüklemede otomatik yeniden kuruluyor. Eski
+  yedeklerde indeks varsa o kullanılır (yeniden üretmekten hızlı).
 - Yerelde son `BACKUP_KEEP_COUNT` (8), dış depoda son `BACKUP_S3_KEEP_COUNT`
   (12) kopya tutulur.
 - Veritabanı dosya kopyalanarak değil SQLite'ın kendi backup API'siyle

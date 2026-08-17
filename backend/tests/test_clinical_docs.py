@@ -115,6 +115,20 @@ def test_reindex_picks_up_changed_file(client, admin):
     assert reindex_all() > 0  # boyut değişti -> yeniden indekslenmeli
 
 
+def _wait_for_rebuild(client, admin, timeout=60):
+    """Yeniden üretim arka planda; teşhis ucundan bitmesini bekler."""
+    import time
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        state = client.get("/backups/restore-status", headers=admin).json()
+        if not state["calisiyor"]:
+            assert state["hata"] is None, state["hata"]
+            return state
+        time.sleep(0.2)
+    raise AssertionError("vektör indeksi yeniden üretimi zaman aşımına uğradı")
+
+
 def test_assistant_index_still_works_after_backup_restore(client, admin):
     """Geri yükleme vektör dizinini diskte değiştiriyor; bellekteki Chroma
     istemcisi bırakılmazsa asistan sunucu yeniden başlatılana kadar bozuk
@@ -124,7 +138,13 @@ def test_assistant_index_still_works_after_backup_restore(client, admin):
     upload(client, admin, "once.pdf", "Aspirin kardiyovaskuler koruma calismasi")
     filename = client.post("/backups/run", headers=admin).json()["filename"]
 
-    assert client.post(f"/backups/{filename}/restore", params={"confirm": True}, headers=admin).status_code == 200
+    r = client.post(f"/backups/{filename}/restore", params={"confirm": True}, headers=admin)
+    assert r.status_code == 200
+
+    # Vektör indeksi artık yedeğe konmuyor, geri yüklemeden sonra klinik
+    # PDF'lerden yeniden üretiliyor - ve bu arka planda çalışıyor.
+    assert r.json()["vektor_indeksi_yeniden_uretiliyor"] is True
+    _wait_for_rebuild(client, admin)
 
     # geri yüklemeden sonra indeks hâlâ okunabilir ve yazılabilir olmalı
     assert get_collection().count() > 0

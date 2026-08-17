@@ -8,6 +8,7 @@ import os
 import shutil
 import sqlite3
 import tempfile
+import threading
 import time
 import zipfile
 from datetime import datetime, timedelta, timezone
@@ -20,12 +21,22 @@ from app.config import get_settings
 logger = logging.getLogger("backup")
 settings = get_settings()
 
+# Yedeğe konan klasörler. Vektör indeksi (`vector_db_dir`) bilerek YOK:
+# canlı ölçümde 205 MB'lık verinin 127.5'i oydu ve içeriği sıkıştırılamıyor
+# (parça metinleri + tam metin arama indeksi, bkz. vector_store.vacuum_index).
+# Üstelik tamamı klinik PDF'lerden yeniden üretilebilir - yani her yedekte 20
+# kopyasını taşımak, zaten yedeklediğimiz veriden türetilen bir şeyi
+# yedeklemek olurdu. Geri yüklemede yeniden üretiliyor (bkz. restore_backup).
 FOLDER_ARCNAMES = [
     ("invoice_folder", "invoices"),
     ("clinical_docs_folder", "clinical_docs"),
     ("checkin_photos_folder", "checkins"),
-    ("vector_db_dir", "vectorstore"),
 ]
+
+# Geri yüklemede ayrıca bakılan klasörler: vektör indeksi artık yedeğe
+# konmuyor ama ESKİ yedeklerde var. Varsa kullanılır (yeniden üretmekten
+# hızlı), yoksa yeniden üretilir.
+LEGACY_ARCNAMES = [("vector_db_dir", "vectorstore")]
 
 
 def _sqlite_path() -> str | None:
@@ -125,7 +136,10 @@ def size_report() -> dict:
     folders = []
     biggest: list[tuple[int, str]] = []
     total = 0
-    for setting_name, arc_prefix in FOLDER_ARCNAMES:
+    # Vektör dizini yedeğe girmiyor ama Railway diskinde yer kaplamaya devam
+    # ediyor; raporda görünmezse "disk neden dolu" sorusu cevapsız kalırdı.
+    for setting_name, arc_prefix in FOLDER_ARCNAMES + LEGACY_ARCNAMES:
+        in_backup = (setting_name, arc_prefix) in FOLDER_ARCNAMES
         folder = getattr(settings, setting_name)
         size = count = 0
         for root, _dirs, files in os.walk(folder):
@@ -138,8 +152,16 @@ def size_report() -> dict:
                 size += file_size
                 count += 1
                 biggest.append((file_size, os.path.join(arc_prefix, os.path.relpath(full, folder))))
-        total += size
-        folders.append({"klasor": arc_prefix, "dosya_sayisi": count, "mb": round(size / 1024 / 1024, 2)})
+        if in_backup:
+            total += size
+        folders.append(
+            {
+                "klasor": arc_prefix,
+                "dosya_sayisi": count,
+                "mb": round(size / 1024 / 1024, 2),
+                "yedege_dahil": in_backup,
+            }
+        )
 
     # Klasör toplamı "nereye bakmalı"yı söyler ama "neyi silmeli"yi söylemez;
     # tek bir şişmiş dosya (ör. Chroma'nın WAL'ı) toplamı domine edebiliyor.
@@ -156,6 +178,7 @@ def size_report() -> dict:
         "en_buyuk_dosyalar": [
             {"dosya": name, "mb": round(size / 1024 / 1024, 2)} for size, name in biggest[:12]
         ],
+        # Yalnızca yedeğe giren klasörler + veritabanı; vektör dizini hariç.
         "sikistirilmamis_toplam_mb": round(total / 1024 / 1024, 2),
         "son_yedek_mb": round(backups[0]["size_bytes"] / 1024 / 1024, 2) if backups else None,
         "yerel_yedek_sayisi": len(backups),
@@ -172,9 +195,54 @@ def backup_path(filename: str) -> Path:
     return path
 
 
-def restore_backup(filename: str) -> None:
+# Yeniden üretim arka planda çalıştığı için dışarıdan görünmez olurdu:
+# kullanıcı "geri yükleme tamam" der, asistan dakikalarca boş cevap verir ve
+# neden olduğunu kimse bilmez. Durum burada tutulup teşhis ucundan okunuyor.
+_rebuild_state: dict = {"calisiyor": False, "parca": None, "hata": None}
+
+
+def vector_rebuild_state() -> dict:
+    return dict(_rebuild_state)
+
+
+def _rebuild_vector_index() -> None:
+    """Geri yüklenen klinik çalışmalardan vektör indeksini sıfırdan üretir.
+
+    Vektör indeksi yedeğe konmadığı için geri yüklemeden sonra elde ya hiç
+    indeks olmaz ya da geri yüklenen veriyle ilgisi olmayan eski bir indeks
+    kalır; ikisi de asistanı sessizce yanlış çalıştırır. Bu yüzden dizin
+    tamamen silinip yeniden kuruluyor.
+
+    `force=True` şart: normal `reindex_all()` veritabanı kaydına bakıp "zaten
+    indeksli" der ve hiçbir şey yapmaz - kayıtlar da yedekten geldiği için
+    dosyalar indekslenmiş görünür ama vektörler yoktur.
+    """
+    from app.services.vector_store import reindex_all, reset_client
+
+    _rebuild_state.update({"calisiyor": True, "parca": None, "hata": None})
+    try:
+        vector_dir = settings.vector_db_dir
+        if os.path.isdir(vector_dir):
+            shutil.rmtree(vector_dir)
+        reset_client()
+        chunks = reindex_all(force=True)
+        _rebuild_state["parca"] = chunks
+        logger.info("Vektör indeksi geri yüklemeden sonra yeniden üretildi: %d parça", chunks)
+    except Exception as e:
+        _rebuild_state["hata"] = f"{type(e).__name__}: {e}"
+        logger.exception("Vektör indeksi yeniden üretilemedi; asistan yeniden indeksleme yapılana kadar cevap veremez")
+    finally:
+        _rebuild_state["calisiyor"] = False
+
+
+def restore_backup(filename: str, rebuild_async: bool = True) -> dict:
     """Verilen yedekten DB + veri klasörlerini geri yükler. Geri dönülemez bir
-    işlem olduğu için önce mevcut durumun bir güvenlik yedeğini alır."""
+    işlem olduğu için önce mevcut durumun bir güvenlik yedeğini alır.
+
+    Yedekte vektör indeksi yoksa (yeni yedeklerin hepsi böyle) indeks
+    yeniden üretilir. Üretim dakikalar sürebildiği için varsayılan olarak
+    arka planda çalışır - HTTP isteği zaman aşımına düşmesin diye.
+    """
     source = backup_path(filename)
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -196,7 +264,9 @@ def restore_backup(filename: str) -> None:
             os.makedirs(os.path.dirname(sqlite_path) or ".", exist_ok=True)
             shutil.copy2(extracted_db, sqlite_path)
 
-        for setting_name, arc_prefix in FOLDER_ARCNAMES:
+        # LEGACY_ARCNAMES da taranır: eski yedekler vektör indeksini içeriyor
+        # ve varsa onu kullanmak yeniden üretmekten çok hızlı.
+        for setting_name, arc_prefix in FOLDER_ARCNAMES + LEGACY_ARCNAMES:
             extracted_folder = os.path.join(tmp, arc_prefix)
             if not os.path.isdir(extracted_folder):
                 continue
@@ -204,6 +274,8 @@ def restore_backup(filename: str) -> None:
             if os.path.isdir(target_folder):
                 shutil.rmtree(target_folder)
             shutil.copytree(extracted_folder, target_folder)
+
+        vector_index_restored = os.path.isdir(os.path.join(tmp, "vectorstore"))
 
     # Vektör dizini de az önce diskte değiştirildi; açık olan Chroma istemcisi
     # artık silinmiş bir dizine bakıyor - bırakılmazsa klinik asistan sunucu
@@ -213,6 +285,14 @@ def restore_backup(filename: str) -> None:
     reset_client()
 
     logger.warning("Sistem şu yedekten geri yüklendi: %s", filename)
+
+    if not vector_index_restored:
+        if rebuild_async:
+            threading.Thread(target=_rebuild_vector_index, name="vector-rebuild", daemon=True).start()
+        else:
+            _rebuild_vector_index()
+
+    return {"vektor_indeksi_yeniden_uretiliyor": not vector_index_restored}
 
 
 BACKUP_INTERVAL_DAYS = 7

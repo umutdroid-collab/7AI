@@ -9,7 +9,14 @@ from app.database import get_db
 from app.deps import require_admin
 from app.services import audit, offsite_backup
 from app.models import User
-from app.services.backup import backup_path, create_backup, list_backups, restore_backup, size_report
+from app.services.backup import (
+    backup_path,
+    create_backup,
+    list_backups,
+    restore_backup,
+    size_report,
+    vector_rebuild_state,
+)
 
 router = APIRouter(prefix="/backups", tags=["backups"])
 
@@ -23,6 +30,14 @@ def get_backups(_: User = Depends(require_admin)):
 def run_backup(_: User = Depends(require_admin)):
     filename = create_backup()
     return {"ok": True, "filename": filename}
+
+
+@router.get("/restore-status")
+def get_restore_status(_: User = Depends(require_admin)):
+    """Geri yüklemeden sonra vektör indeksinin yeniden üretimi arka planda
+    sürüyor mu. Sürerken asistan kaynak bulamaz; bunu görmenin başka yolu
+    yok."""
+    return vector_rebuild_state()
 
 
 @router.get("/size-report")
@@ -128,7 +143,7 @@ def restore(
             detail="Bu işlem mevcut verilerin üzerine yazar. Onaylamak için ?confirm=true ekleyin.",
         )
     try:
-        restore_backup(filename)
+        result = restore_backup(filename)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Yedek bulunamadı")
     # Geri yükleme veritabanının üzerine yazdığı için günlük kaydı SONRA ve
@@ -142,7 +157,9 @@ def restore(
         fresh.commit()
     finally:
         fresh.close()
-    return {"ok": True}
+    # Vektör indeksi yedeğe konmuyor; yeniden üretiliyorsa asistan birkaç
+    # dakika kaynaksız cevap verir, kullanıcı bunu bilmeli.
+    return {"ok": True, **result}
 
 
 @router.delete("/{filename}")

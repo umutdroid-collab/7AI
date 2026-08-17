@@ -272,10 +272,20 @@ başlatıyor. Tablo kırılımı (yerel, 6000 parça) yeri kimin kapladığını
 gösteriyor: 28.1 MB'ın 23'ü `embedding_metadata` + `embedding_fulltext_search_*`,
 yani parça metinleri ve hiç kullanmadığımız tam metin arama indeksi. Bunlar
 gerçek veri; `POST /assistant/vacuum-index` yalnızca boş sayfaları geri verir
-(~%14). Vektör indeksini küçültmenin tek gerçek yolu **onu yedeğe hiç
-koymamak** — klinik PDF'lerden yeniden üretilebiliyor. Yapılırsa geri yükleme
-`reindex_all(force=True)` çağırmak zorunda: normal `reindex_all()` veritabanı
-kaydına bakıp "zaten indeksli" diyerek atlar ve asistan sessizce boş kalır.
+(~%14).
+
+**Bu yüzden vektör indeksi yedeğe konmuyor** (`backup.FOLDER_ARCNAMES` içinde
+yok). Tamamı klinik PDF'lerden türetiliyor; yedeklemek, zaten yedeklenen
+veriden üretilen bir şeyi 20 kopya taşımak olurdu. Karşılığında geri yükleme
+onu kurmak zorunda ve burada iki tuzak var: (1) `reindex_all(force=True)`
+şart — normal çağrı veritabanı kaydına bakıp "zaten indeksli" der, kayıtlar
+da yedekten geldiği için dosyalar indeksli görünür ama vektör yoktur;
+(2) dizin önce **silinir**, yoksa geri yüklenen veriyle ilgisi olmayan eski
+parçalar indekste kalır. Üretim dakikalar sürebildiği için arka planda
+çalışır: `restore` yanıtı `vektor_indeksi_yeniden_uretiliyor` döner ve
+`GET /backups/restore-status` ilerlemeyi gösterir — arka plan işini görünür
+kılmazsak "geri yükleme tamam" denip asistan sessizce boş kalırdı. Eski
+yedeklerde indeks varsa (bkz. `LEGACY_ARCNAMES`) o kullanılır.
 
 **Yedekte kazanılan yer katlanarak sayılır**: her .zip *tüm* yüklenen
 dosyaları içeriyor ve yerelde `BACKUP_KEEP_COUNT` (8), dış depoda
@@ -355,8 +365,11 @@ normal akışta hatalar sessizce yutulur:
 - `POST /invoices/compress-existing` (birikmiş fatura PDF'lerini küçültür;
   `taranan_pdf` > `islenen_pdf` normaldir — metin tabanlı e-faturalarda kazanç
   eşiğin altında kalır ve dosyaya dokunulmaz)
-- `GET /backups/size-report` (yedeğin içinde neyin ne kadar yer kapladığı —
-  sıkıştırmayı doğru yere uygulamak için önce buna bakın)
+- `GET /backups/size-report` (neyin ne kadar yer kapladığı; `yedege_dahil`
+  alanı klasörün yedeğe girip girmediğini söyler — sıkıştırmayı doğru yere
+  uygulamak için önce buna bakın)
+- `GET /backups/restore-status` (geri yüklemeden sonra vektör indeksinin
+  yeniden üretimi sürüyor mu; sürerken asistan doküman bulamaz)
 - `GET /backups/offsite/status` (dış depoya erişimi sınar), `GET /backups/offsite`
   (uzaktaki kopyalar), `POST /backups/{dosya}/offsite-upload` (elle gönderir),
   `POST /backups/offsite/{dosya}/pull` (uzaktaki kopyayı geri indirir),

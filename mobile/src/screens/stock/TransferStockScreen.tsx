@@ -51,7 +51,7 @@ export default function TransferStockScreen({ route, navigation }: any) {
       : destination === "depot"
       ? "Depo (iade)"
       : destination === "vehicle"
-      ? "🚗 Arabama Al"
+      ? "Arabama Al"
       : hospitals.find((h) => h.id === destination)?.name;
 
   return (
@@ -69,7 +69,7 @@ export default function TransferStockScreen({ route, navigation }: any) {
           onPress={() => setDestination("vehicle")}
         >
           <Text style={[styles.quickChipText, destination === "vehicle" && styles.quickChipTextActive]}>
-            🚗 Arabama Al
+            Arabama Al
           </Text>
         </TouchableOpacity>
         <TouchableOpacity

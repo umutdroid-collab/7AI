@@ -19,7 +19,7 @@ const MOVEMENT_LABELS: Record<string, string> = {
 
 function locationLabel(item: StockItem): string {
   if (item.hospital) return item.hospital.name;
-  if (item.carried_by) return `🚗 ${item.carried_by.full_name} (araçta)`;
+  if (item.carried_by) return `${item.carried_by.full_name} (araçta)`;
   return "Depo";
 }
 

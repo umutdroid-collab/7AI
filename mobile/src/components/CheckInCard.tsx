@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Image, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CheckIn } from "../types";
-import { colors, spacing } from "../theme";
+import { colors, layout, radius, spacing, typography } from "../theme";
 import { api, API_BASE_URL, apiErrorMessage } from "../api/client";
 import { checkinPhotoUrl, deleteCheckIn } from "../api/services";
 import { useAuth } from "../context/AuthContext";
 import Alert from "../utils/alert";
 import PhotoViewerModal from "./PhotoViewerModal";
+import Icon from "./Icon";
 
 export default function CheckInCard({
   checkin,
@@ -116,7 +117,10 @@ export default function CheckInCard({
       )}
       <View style={styles.info}>
         {showEmployee && <Text style={styles.employee}>{checkin.user.full_name}</Text>}
-        <Text style={styles.hospital}>🏥 {checkin.hospital.name}</Text>
+        <View style={styles.hospitalRow}>
+          <Icon name="hospital" size={12} color={colors.primary} />
+          <Text style={styles.hospital} numberOfLines={1}>{checkin.hospital.name}</Text>
+        </View>
         <Text style={styles.time}>{new Date(checkin.checked_in_at).toLocaleString("tr-TR")}</Text>
         {checkin.comment && <Text style={styles.comment}>{checkin.comment}</Text>}
         {checkin.latitude != null && checkin.longitude != null && (
@@ -125,7 +129,10 @@ export default function CheckInCard({
               Linking.openURL(`https://www.google.com/maps?q=${checkin.latitude},${checkin.longitude}`)
             }
           >
-            <Text style={styles.mapLink}>📍 Haritada Gör</Text>
+            <View style={styles.linkRow}>
+              <Icon name="location" size={12} color={colors.primary} />
+              <Text style={styles.mapLink}>Haritada Gör</Text>
+            </View>
           </TouchableOpacity>
         )}
         {/* Dikkat çeken bir yorum listede aşağı kayıp kayboluyordu; buradan
@@ -141,13 +148,20 @@ export default function CheckInCard({
               })
             }
           >
-            <Text style={styles.followUpLink}>🔔 Takibe Al</Text>
+            <View style={styles.linkRow}>
+              <Icon name="bell" size={12} color={colors.warning} />
+              <Text style={styles.followUpLink}>Takibe Al</Text>
+            </View>
           </TouchableOpacity>
         )}
       </View>
       {user?.role === "admin" && (
         <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} disabled={isDeleting}>
-          <Text style={styles.deleteButtonText}>{isDeleting ? "..." : "🗑"}</Text>
+          {isDeleting ? (
+            <Text style={styles.deleteButtonText}>...</Text>
+          ) : (
+            <Icon name="trash" size={14} color={colors.textMuted} />
+          )}
         </TouchableOpacity>
       )}
     </View>
@@ -157,32 +171,37 @@ export default function CheckInCard({
 const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: spacing(1.5),
-    marginBottom: spacing(1.5),
+    alignItems: "flex-start",
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    padding: layout.cardGap,
+    marginBottom: layout.cardGap,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderSubtle,
   },
   photo: {
-    width: 64,
-    height: 64,
-    borderRadius: 10,
+    width: 80,
+    height: 80,
+    borderRadius: radius.md,
     backgroundColor: colors.surfaceAlt,
-    marginRight: spacing(1.5),
+    marginRight: layout.cardGap,
   },
-  info: { flex: 1 },
-  employee: { color: colors.text, fontWeight: "700", fontSize: 14 },
-  hospital: { color: colors.primary, fontSize: 13, fontWeight: "600", marginTop: 2 },
-  time: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  comment: { color: colors.textMuted, fontSize: 12, marginTop: spacing(0.5), fontStyle: "italic" },
-  mapLink: { color: colors.primary, fontSize: 12, marginTop: spacing(0.5), fontWeight: "600" },
-  followUpLink: { color: colors.warning, fontSize: 12, marginTop: spacing(0.5), fontWeight: "600" },
+  info: { flex: 1, gap: 4 },
+  employee: { ...typography.cardTitle, color: colors.text },
+  hospitalRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  hospital: { ...typography.bodyStrong, color: colors.primary, flexShrink: 1 },
+  time: { ...typography.meta, color: colors.textMuted },
+  comment: { ...typography.body, color: colors.textMuted, fontStyle: "italic" },
+  linkRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
+  mapLink: { ...typography.meta, color: colors.primary, fontWeight: "700" },
+  followUpLink: { ...typography.meta, color: colors.warning, fontWeight: "700" },
   deleteButton: {
-    paddingHorizontal: spacing(1.5),
-    paddingVertical: spacing(1),
+    width: 28,
+    height: 28,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
     marginLeft: spacing(1),
   },
-  deleteButtonText: { fontSize: 18 },
+  deleteButtonText: { color: colors.textMuted, fontSize: 12 },
 });

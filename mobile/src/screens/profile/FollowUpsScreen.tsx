@@ -20,6 +20,7 @@ import {
 } from "../../api/services";
 import { FollowUp } from "../../types";
 import { colors, spacing } from "../../theme";
+import Icon from "../../components/Icon";
 import { contentColumn } from "../../components/ui";
 import ErrorRetry from "../../components/ErrorRetry";
 
@@ -187,7 +188,7 @@ export default function FollowUpsScreen({ route }: any) {
                   !item.is_done && (item.days_until_due ?? 0) < 0 && styles.dueOverdue,
                 ]}
               >
-                📅 {new Date(item.remind_on).toLocaleDateString("tr-TR")} · {dueLabel(item)}
+                {new Date(item.remind_on).toLocaleDateString("tr-TR")} · {dueLabel(item)}
               </Text>
               {item.checkin && (
                 <Text style={styles.context}>
@@ -198,7 +199,7 @@ export default function FollowUpsScreen({ route }: any) {
             </View>
 
             <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(item)}>
-              <Text style={styles.deleteButtonText}>🗑</Text>
+              <Icon name="trash" size={16} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
         ))

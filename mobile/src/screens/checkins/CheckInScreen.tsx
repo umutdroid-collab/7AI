@@ -22,8 +22,9 @@ import {
 } from "../../api/services";
 import { dateStampedFilename, downloadFile } from "../../utils/download";
 import { CheckIn, Hospital } from "../../types";
-import { colors, spacing } from "../../theme";
-import { contentColumn } from "../../components/ui";
+import { colors, layout, radius, spacing, typography } from "../../theme";
+import { contentColumn, SegmentedToggle } from "../../components/ui";
+import Icon from "../../components/Icon";
 import { apiErrorMessage, TOKEN_KEY } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import CheckInCard from "../../components/CheckInCard";
@@ -255,8 +256,9 @@ export default function CheckInScreen({ navigation }: any) {
               style={[styles.dictateButton, isListening && styles.dictateButtonActive]}
               onPress={handleToggleDictation}
             >
+              <Icon name="mic" size={14} color={isListening ? "#fff" : colors.textMuted} />
               <Text style={[styles.dictateText, isListening && styles.dictateTextActive]}>
-                {isListening ? "⏹ Dinleniyor... (durdurmak için dokunun)" : "🎤 Konuşarak yaz"}
+                {isListening ? "Dinleniyor... (durdurmak için dokunun)" : "Konuşarak yaz"}
               </Text>
             </TouchableOpacity>
           )}
@@ -265,26 +267,23 @@ export default function CheckInScreen({ navigation }: any) {
             {isSubmitting ? (
               <ActivityIndicator color="#0f172a" />
             ) : (
-              <Text style={styles.checkInButtonText}>📷 Fotoğraf Çek ve Giriş Yap</Text>
+              <View style={styles.buttonRow}>
+                <Icon name="camera" size={18} color={colors.onPrimary} />
+                <Text style={styles.checkInButtonText}>Fotoğraf Çek ve Giriş Yap</Text>
+              </View>
             )}
           </TouchableOpacity>
         </View>
 
         {user?.role === "admin" && (
-          <View style={styles.segmentRow}>
-            <TouchableOpacity
-              style={[styles.segment, viewMode === "mine" && styles.segmentActive]}
-              onPress={() => setViewMode("mine")}
-            >
-              <Text style={[styles.segmentText, viewMode === "mine" && styles.segmentTextActive]}>Girişlerim</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.segment, viewMode === "team" && styles.segmentActive]}
-              onPress={() => setViewMode("team")}
-            >
-              <Text style={[styles.segmentText, viewMode === "team" && styles.segmentTextActive]}>Tüm Ekip</Text>
-            </TouchableOpacity>
-          </View>
+          <SegmentedToggle
+            value={viewMode}
+            onChange={setViewMode}
+            options={[
+              { value: "mine", label: "Girişlerim" },
+              { value: "team", label: "Tüm Ekip" },
+            ]}
+          />
         )}
 
         <View style={styles.filterCard}>
@@ -326,7 +325,10 @@ export default function CheckInScreen({ navigation }: any) {
             {isExporting ? (
               <ActivityIndicator color={colors.primary} />
             ) : (
-              <Text style={styles.exportButtonText}>⬇ Excel Raporu İndir</Text>
+              <View style={styles.buttonRow}>
+                <Icon name="file" size={14} color={colors.success} />
+                <Text style={styles.exportButtonText}>Excel Raporu İndir</Text>
+              </View>
             )}
           </TouchableOpacity>
         </View>
@@ -367,11 +369,11 @@ const styles = StyleSheet.create({
   scrollContent: { ...contentColumn, padding: spacing(2) },
   container: { flex: 1, backgroundColor: colors.background },
   formCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
     padding: spacing(2),
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderSubtle,
     marginBottom: spacing(2),
   },
   formTitle: { color: colors.text, fontSize: 15, fontWeight: "700", marginBottom: spacing(1.5) },
@@ -404,6 +406,7 @@ const styles = StyleSheet.create({
   },
   dictateButton: {
     flexDirection: "row",
+    gap: spacing(1),
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.surfaceAlt,
@@ -422,23 +425,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing(1.75),
     alignItems: "center",
   },
-  checkInButtonText: { color: "#0f172a", fontWeight: "700" },
-  segmentRow: {
-    flexDirection: "row",
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 4,
-    marginBottom: spacing(2),
-  },
-  segment: { flex: 1, paddingVertical: spacing(1.25), borderRadius: 8, alignItems: "center" },
-  segmentActive: { backgroundColor: colors.primary },
-  segmentText: { color: colors.textMuted, fontSize: 13, fontWeight: "700" },
-  segmentTextActive: { color: "#0f172a" },
+  buttonRow: { flexDirection: "row", alignItems: "center", gap: spacing(1) },
+  checkInButtonText: { color: colors.onPrimary, fontWeight: "700" },
   filterCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
     padding: spacing(2),
     borderWidth: 1,
     borderColor: colors.border,

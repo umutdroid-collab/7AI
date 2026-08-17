@@ -16,8 +16,9 @@ import Alert from "../../utils/alert";
 import * as DocumentPicker from "expo-document-picker";
 import { askAssistant, fetchClinicalDocuments, uploadClinicalDocument } from "../../api/services";
 import { ChatMessage } from "../../types";
-import { colors, spacing } from "../../theme";
+import { colors, layout, radius, spacing, typography } from "../../theme";
 import { contentColumn } from "../../components/ui";
+import Icon from "../../components/Icon";
 import { apiErrorMessage } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 
@@ -112,7 +113,10 @@ export default function AssistantChatScreen() {
             {isUploading ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Text style={styles.adminUploadText}>📤 Çalışma Yükle</Text>
+              <>
+                <Icon name="upload" size={12} color={colors.primary} />
+                <Text style={styles.adminUploadText}>Çalışma Yükle</Text>
+              </>
             )}
           </TouchableOpacity>
         </View>
@@ -144,7 +148,7 @@ export default function AssistantChatScreen() {
           multiline
         />
         <TouchableOpacity style={styles.sendButton} onPress={handleSend} disabled={isSending}>
-          <Text style={styles.sendButtonText}>Gönder</Text>
+          <Icon name="send" size={18} color={colors.onPrimary} />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -156,6 +160,14 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   return (
     <View style={[styles.bubbleRow, isUser && styles.bubbleRowUser]}>
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
+        {!isUser && (
+          <View style={styles.bubbleHeader}>
+            <View style={styles.sparkBadge}>
+              <Icon name="sparkles" size={14} color={colors.primary} />
+            </View>
+            <Text style={styles.bubbleBrand}>Klinik Asistan</Text>
+          </View>
+        )}
         <Text style={[styles.bubbleText, isUser && styles.bubbleTextUser]}>{message.text}</Text>
         {message.sources && message.sources.length > 0 && (
           <View style={styles.sourcesBox}>
@@ -167,7 +179,9 @@ function MessageBubble({ message }: { message: ChatMessage }) {
                 onPress={() => s.url && Linking.openURL(s.url)}
                 style={styles.sourceRow}
               >
-                <Text style={styles.sourceIcon}>{s.type === "pubmed" ? "📄" : "📚"}</Text>
+                <View style={styles.sourceIcon}>
+                  <Icon name={s.type === "pubmed" ? "file" : "folder"} size={12} color={colors.textMuted} />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.sourceTitle, !!s.url && styles.sourceLink]} numberOfLines={2}>
                     {s.title}
@@ -184,68 +198,115 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 }
 
 const styles = StyleSheet.create({
-  scrollContent: { ...contentColumn, padding: spacing(2) },
+  scrollContent: { ...contentColumn, padding: layout.screenPadding },
   container: { flex: 1, backgroundColor: colors.background },
   adminBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: spacing(2),
-    paddingVertical: spacing(1),
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: spacing(1),
+    paddingHorizontal: layout.screenPadding,
+    paddingVertical: spacing(1.5),
+    borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.surface,
   },
-  adminBarText: { color: colors.textMuted, fontSize: 12, flex: 1 },
+  adminBarText: { ...typography.meta, color: colors.textMuted, flex: 1 },
   adminUploadButton: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.primaryTint,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing(1.5),
-    paddingVertical: spacing(0.75),
+    paddingVertical: 6,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.primary,
+    borderStyle: "dashed",
   },
-  adminUploadText: { color: colors.primary, fontSize: 12, fontWeight: "700" },
-  bubbleRow: { marginBottom: spacing(1.5), alignItems: "flex-start" },
+  adminUploadText: { ...typography.meta, color: colors.primary, fontWeight: "700" },
+
+  bubbleRow: { marginBottom: layout.cardGap, alignItems: "flex-start" },
   bubbleRowUser: { alignItems: "flex-end" },
-  bubble: { maxWidth: "85%", borderRadius: 14, padding: spacing(1.5) },
-  bubbleAssistant: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  bubble: { maxWidth: "85%", borderRadius: radius.lg, padding: layout.cardPadding },
+  bubbleAssistant: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+  },
   bubbleUser: { backgroundColor: colors.primary },
-  bubbleText: { color: colors.text, fontSize: 14, lineHeight: 20 },
-  bubbleTextUser: { color: "#0f172a" },
-  sourcesBox: { marginTop: spacing(1.5), borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, paddingTop: spacing(1) },
-  sourcesTitle: { color: colors.textMuted, fontSize: 11, fontWeight: "700", marginBottom: spacing(0.5), textTransform: "uppercase" },
-  sourceRow: { flexDirection: "row", marginTop: spacing(0.5) },
-  sourceIcon: { marginRight: spacing(1) },
+  bubbleHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing(1),
+    marginBottom: layout.cardGap,
+  },
+  sparkBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primaryTint,
+  },
+  bubbleBrand: { ...typography.bodyStrong, color: colors.primary },
+  bubbleText: { color: colors.text, fontSize: 14, lineHeight: 21 },
+  bubbleTextUser: { color: colors.onPrimary },
+
+  sourcesBox: {
+    marginTop: layout.cardGap,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
+    paddingTop: spacing(1),
+  },
+  sourcesTitle: {
+    ...typography.badge,
+    color: colors.textDim,
+    marginBottom: spacing(0.5),
+    textTransform: "uppercase",
+  },
+  sourceRow: { flexDirection: "row", marginTop: spacing(0.75) },
+  sourceIcon: { marginRight: spacing(1), marginTop: 1 },
   sourceTitle: { color: colors.text, fontSize: 12, fontWeight: "600" },
   sourceLink: { color: colors.primary, textDecorationLine: "underline" },
-  sourceDetail: { color: colors.textMuted, fontSize: 11, marginTop: 1 },
-  typingRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing(2), paddingBottom: spacing(1) },
-  typingText: { color: colors.textMuted, fontSize: 12, marginLeft: spacing(1) },
+  sourceDetail: { ...typography.meta, color: colors.textMuted, marginTop: 1 },
+
+  typingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing(1),
+    paddingHorizontal: layout.screenPadding,
+    paddingBottom: spacing(1),
+  },
+  typingText: { ...typography.meta, color: colors.textMuted },
+
   inputRow: {
     flexDirection: "row",
-    padding: spacing(1.5),
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
     alignItems: "flex-end",
+    gap: spacing(1.5),
+    padding: layout.screenPadding,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
   input: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    paddingHorizontal: spacing(2),
-    paddingVertical: spacing(1.25),
+    minHeight: 48,
+    maxHeight: 120,
+    backgroundColor: colors.card,
+    borderRadius: radius.md,
+    paddingHorizontal: layout.cardPadding,
+    paddingVertical: spacing(1.5),
     color: colors.text,
     borderWidth: 1,
-    borderColor: colors.border,
-    maxHeight: 120,
+    borderColor: colors.borderSubtle,
   },
   sendButton: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.primary,
-    borderRadius: 20,
-    paddingHorizontal: spacing(2),
-    paddingVertical: spacing(1.25),
-    marginLeft: spacing(1),
   },
-  sendButtonText: { color: "#0f172a", fontWeight: "700" },
 });

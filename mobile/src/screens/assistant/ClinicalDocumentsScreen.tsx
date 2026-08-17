@@ -19,6 +19,7 @@ import {
 import { ClinicalDocument } from "../../types";
 import { apiErrorMessage } from "../../api/client";
 import { colors, spacing } from "../../theme";
+import Icon from "../../components/Icon";
 import ErrorRetry from "../../components/ErrorRetry";
 
 function formatSize(bytes: number): string {
@@ -119,7 +120,10 @@ export default function ClinicalDocumentsScreen() {
         {isUploading ? (
           <ActivityIndicator color="#0f172a" />
         ) : (
-          <Text style={styles.primaryButtonText}>📚 Klinik Çalışma Ekle (PDF)</Text>
+          <View style={styles.primaryButtonRow}>
+            <Icon name="upload" size={16} color={colors.onPrimary} />
+            <Text style={styles.primaryButtonText}>Klinik Çalışma Ekle (PDF)</Text>
+          </View>
         )}
       </TouchableOpacity>
 
@@ -159,7 +163,11 @@ export default function ClinicalDocumentsScreen() {
                 onPress={() => handleDelete(item)}
                 disabled={busyId === item.id}
               >
-                <Text style={styles.deleteButtonText}>{busyId === item.id ? "..." : "🗑"}</Text>
+                {busyId === item.id ? (
+                  <Text style={styles.deleteButtonText}>...</Text>
+                ) : (
+                  <Icon name="trash" size={16} color={colors.textMuted} />
+                )}
               </TouchableOpacity>
             </View>
           )}
@@ -170,6 +178,7 @@ export default function ClinicalDocumentsScreen() {
 }
 
 const styles = StyleSheet.create({
+  primaryButtonRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   container: { flex: 1, backgroundColor: colors.background, padding: spacing(2) },
   intro: { color: colors.textMuted, fontSize: 13, marginBottom: spacing(2), lineHeight: 18 },
   primaryButton: {

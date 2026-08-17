@@ -5,6 +5,7 @@ import Alert from "../../utils/alert";
 import { deleteHospital, fetchHospitals } from "../../api/services";
 import { Hospital } from "../../types";
 import { colors, spacing } from "../../theme";
+import Icon from "../../components/Icon";
 import { apiErrorMessage } from "../../api/client";
 import ErrorRetry from "../../components/ErrorRetry";
 
@@ -93,7 +94,11 @@ export default function HospitalListScreen({ navigation }: any) {
                 onPress={() => handleDelete(h)}
                 disabled={deletingId === h.id}
               >
-                <Text style={styles.deleteButtonText}>{deletingId === h.id ? "..." : "🗑"}</Text>
+                {deletingId === h.id ? (
+                  <Text style={styles.deleteButtonText}>...</Text>
+                ) : (
+                  <Icon name="trash" size={16} color={colors.textMuted} />
+                )}
               </TouchableOpacity>
             </View>
           ))

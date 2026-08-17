@@ -9,6 +9,7 @@ import { api, apiErrorMessage, API_BASE_URL, TOKEN_KEY } from "../../api/client"
 import { deleteInvoice, fetchInvoice, invoicePdfUrl, updateInvoiceStatus } from "../../api/services";
 import { Invoice } from "../../types";
 import { colors, spacing } from "../../theme";
+import Icon from "../../components/Icon";
 import { useAuth } from "../../context/AuthContext";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -138,7 +139,7 @@ export default function InvoiceDetailScreen({ route, navigation }: any) {
 
       {invoice.status === "needs_review" && (
         <Text style={styles.warning}>
-          ⚠ Bu faturanın bazı alanları otomatik olarak okunamadı. Lütfen PDF'i kontrol edin.
+          Bu faturanın bazı alanları otomatik olarak okunamadı. Lütfen PDF'i kontrol edin.
         </Text>
       )}
 
@@ -171,7 +172,10 @@ export default function InvoiceDetailScreen({ route, navigation }: any) {
           {isDeleting ? (
             <ActivityIndicator color={colors.danger} />
           ) : (
-            <Text style={styles.deleteButtonText}>🗑 Faturayı Sil</Text>
+            <View style={styles.deleteRow}>
+              <Icon name="trash" size={16} color={colors.danger} />
+              <Text style={styles.deleteButtonText}>Faturayı Sil</Text>
+            </View>
           )}
         </TouchableOpacity>
       )}
@@ -195,6 +199,7 @@ function InfoRow({ label, value, truncate }: { label: string; value: string; tru
 }
 
 const styles = StyleSheet.create({
+  deleteRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   container: { flex: 1, backgroundColor: colors.background },
   title: { color: colors.text, fontSize: 20, fontWeight: "700", marginBottom: spacing(2) },
   infoBox: {

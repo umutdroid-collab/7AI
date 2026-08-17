@@ -4,8 +4,9 @@ import { useFocusEffect } from "@react-navigation/native";
 import Alert from "../../utils/alert";
 import { adjustSalesTargetProgress, deleteSalesTarget, fetchSalesTargets } from "../../api/services";
 import { SalesTarget } from "../../types";
-import { colors, spacing } from "../../theme";
+import { colors, layout, radius, spacing, typography } from "../../theme";
 import { contentColumn } from "../../components/ui";
+import Icon from "../../components/Icon";
 import { apiErrorMessage } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import ErrorRetry from "../../components/ErrorRetry";
@@ -151,7 +152,10 @@ export default function PersonelTakipScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {user?.role === "admin" && (
           <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate("AddSalesTarget")}>
-            <Text style={styles.addButtonText}>+ Yeni Hedef</Text>
+            <View style={styles.addButtonRow}>
+              <Icon name="plus" size={16} color={colors.onPrimary} />
+              <Text style={styles.addButtonText}>Yeni Hedef</Text>
+            </View>
           </TouchableOpacity>
         )}
 
@@ -170,23 +174,24 @@ export default function PersonelTakipScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  addButtonRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing(1) },
   scrollContent: { ...contentColumn, padding: spacing(2) },
   container: { flex: 1, backgroundColor: colors.background },
   addButton: {
     backgroundColor: colors.primary,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingVertical: spacing(1.5),
     alignItems: "center",
     marginBottom: spacing(2),
   },
-  addButtonText: { color: "#0f172a", fontWeight: "700" },
+  addButtonText: { color: colors.onPrimary, fontWeight: "700" },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
     padding: spacing(2),
     marginBottom: spacing(1.5),
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderSubtle,
   },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   productName: { color: colors.text, fontSize: 15, fontWeight: "700", flex: 1, marginRight: spacing(1) },
@@ -218,7 +223,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderSubtle,
   },
   adjustButtonText: { color: colors.text, fontSize: 22, fontWeight: "700", marginTop: -2 },
   adjustLabel: { color: colors.textMuted, fontSize: 12, minWidth: 110, textAlign: "center" },

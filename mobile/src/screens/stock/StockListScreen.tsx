@@ -1,25 +1,17 @@
 import React, { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import Alert from "../../utils/alert";
 import { fetchHospitals, fetchStock, stockExportUrl } from "../../api/services";
 import { Hospital, StockItem } from "../../types";
-import { colors, spacing } from "../../theme";
+import { colors, layout, spacing } from "../../theme";
 import StockItemCard from "../../components/StockItemCard";
 import { apiErrorMessage } from "../../api/client";
 import { dateStampedFilename, downloadFile } from "../../utils/download";
 import { useAuth } from "../../context/AuthContext";
 import HospitalPickerModal from "../../components/HospitalPickerModal";
 import ErrorRetry from "../../components/ErrorRetry";
+import { ActionPill, Fab, FilterChip, SearchField, SegmentedToggle, WrapRow } from "../../components/ui";
 
 type ViewMode = "active" | "used";
 
@@ -87,69 +79,69 @@ export default function StockListScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.segmentRow}>
-        <TouchableOpacity
-          style={[styles.segment, viewMode === "active" && styles.segmentActive]}
-          onPress={() => setViewMode("active")}
-        >
-          <Text style={[styles.segmentText, viewMode === "active" && styles.segmentTextActive]}>Aktif Stok</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.segment, viewMode === "used" && styles.segmentActive]}
-          onPress={() => setViewMode("used")}
-        >
-          <Text style={[styles.segmentText, viewMode === "used" && styles.segmentTextActive]}>Kullanım</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TextInput
-        style={styles.search}
-        placeholder="Ref no, ÜBB no, lot no veya seri no ile ara"
-        placeholderTextColor={colors.textMuted}
-        value={query}
-        onChangeText={setQuery}
-        onSubmitEditing={load}
-        returnKeyType="search"
-      />
-
-      <View style={styles.chipsRow}>
-        <FilterChip
-          label="Tümü"
-          active={selectedHospitalId === "all"}
-          onPress={() => setSelectedHospitalId("all")}
+      <View style={styles.controls}>
+        <SegmentedToggle
+          value={viewMode}
+          onChange={setViewMode}
+          options={[
+            { value: "active", label: "Aktif Stok" },
+            { value: "used", label: "Kullanım" },
+          ]}
         />
-        <FilterChip
-          label="Depo"
-          active={selectedHospitalId === "warehouse"}
-          onPress={() => setSelectedHospitalId("warehouse")}
+
+        <SearchField
+          value={query}
+          onChangeText={setQuery}
+          onSubmit={load}
+          placeholder="Ref no, ÜBB no, lot no veya seri no ile ara"
         />
-        <TouchableOpacity
-          style={[styles.chip, typeof selectedHospitalId === "number" && styles.chipActive]}
-          onPress={() => setIsPickerVisible(true)}
-        >
-          <Text style={[styles.chipText, typeof selectedHospitalId === "number" && styles.chipTextActive]}>
-            {typeof selectedHospitalId === "number"
-              ? hospitals.find((h) => h.id === selectedHospitalId)?.name ?? "Hastane"
-              : "Hastane Seç ▾"}
-          </Text>
-        </TouchableOpacity>
-        {user?.role === "admin" && (
-          <>
-            <TouchableOpacity style={styles.addHospitalChip} onPress={() => navigation.navigate("HospitalList")}>
-              <Text style={styles.addHospitalChipText}>Hastaneler ⚙</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.addHospitalChip} onPress={() => navigation.navigate("ProductList")}>
-              <Text style={styles.addHospitalChipText}>Ürünler ⚙</Text>
-            </TouchableOpacity>
-          </>
-        )}
-        <TouchableOpacity style={styles.addHospitalChip} onPress={handleExportExcel} disabled={isExporting}>
-          {isExporting ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <Text style={styles.addHospitalChipText}>📊 Excel'e Aktar</Text>
+
+        <WrapRow>
+          <FilterChip
+            label="Tümü"
+            active={selectedHospitalId === "all"}
+            onPress={() => setSelectedHospitalId("all")}
+          />
+          <FilterChip
+            label="Depo"
+            active={selectedHospitalId === "warehouse"}
+            onPress={() => setSelectedHospitalId("warehouse")}
+          />
+          <FilterChip
+            label={
+              typeof selectedHospitalId === "number"
+                ? hospitals.find((h) => h.id === selectedHospitalId)?.name ?? "Hastane"
+                : "Hastane Seç"
+            }
+            active={typeof selectedHospitalId === "number"}
+            icon="chevronDown"
+            onPress={() => setIsPickerVisible(true)}
+          />
+        </WrapRow>
+
+        <WrapRow>
+          {user?.role === "admin" && (
+            <>
+              <ActionPill
+                label="Hastaneler"
+                icon="settings"
+                onPress={() => navigation.navigate("HospitalList")}
+              />
+              <ActionPill
+                label="Ürünler"
+                icon="settings"
+                onPress={() => navigation.navigate("ProductList")}
+              />
+            </>
           )}
-        </TouchableOpacity>
+          <ActionPill
+            label="Excel'e Aktar"
+            icon="file"
+            tone="success"
+            loading={isExporting}
+            onPress={handleExportExcel}
+          />
+        </WrapRow>
       </View>
 
       <HospitalPickerModal
@@ -168,7 +160,7 @@ export default function StockListScreen({ navigation }: any) {
         <FlatList
           data={items}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ padding: spacing(2) }}
+          contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} />}
           ListEmptyComponent={
             <Text style={styles.empty}>
@@ -182,88 +174,18 @@ export default function StockListScreen({ navigation }: any) {
       )}
 
       {viewMode === "active" && user?.role === "admin" && (
-        <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate("AddStock")}>
-          <Text style={styles.fabText}>+</Text>
-        </TouchableOpacity>
+        <Fab onPress={() => navigation.navigate("AddStock")} />
       )}
     </View>
   );
 }
 
-function FilterChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <TouchableOpacity style={[styles.chip, active && styles.chipActive]} onPress={onPress}>
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  segmentRow: {
-    flexDirection: "row",
-    marginHorizontal: spacing(2),
-    marginTop: spacing(2),
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 4,
+  controls: {
+    padding: layout.screenPadding,
+    gap: layout.cardGap,
   },
-  segment: {
-    flex: 1,
-    paddingVertical: spacing(1.25),
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  segmentActive: { backgroundColor: colors.primary },
-  segmentText: { color: colors.textMuted, fontSize: 13, fontWeight: "700" },
-  segmentTextActive: { color: "#0f172a" },
-  search: {
-    margin: spacing(2),
-    marginBottom: spacing(1),
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    paddingHorizontal: spacing(2),
-    paddingVertical: spacing(1.5),
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipsRow: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: spacing(2), marginBottom: spacing(1), gap: spacing(1) },
-  chip: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    paddingHorizontal: spacing(2),
-    paddingVertical: spacing(1),
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
-  chipTextActive: { color: "#0f172a" },
-  addHospitalChip: {
-    borderRadius: 20,
-    paddingHorizontal: spacing(2),
-    paddingVertical: spacing(1),
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderStyle: "dashed",
-  },
-  addHospitalChipText: { color: colors.primary, fontSize: 13, fontWeight: "700" },
-  error: { color: colors.danger, textAlign: "center", marginTop: spacing(4) },
+  list: { paddingHorizontal: layout.screenPadding, paddingBottom: spacing(10) },
   empty: { color: colors.textMuted, textAlign: "center", marginTop: spacing(4) },
-  fab: {
-    position: "absolute",
-    right: spacing(3),
-    bottom: spacing(3),
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 4,
-  },
-  fabText: { fontSize: 28, color: "#0f172a", fontWeight: "700", marginTop: -2 },
 });

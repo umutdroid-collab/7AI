@@ -35,6 +35,15 @@ mobile/     Expo (React Native) — hem native hem web (PWA) → Netlify
   durdu. Cloudflare Pages ayarları: kök dizin `mobile`, komut
   `npm run build:web`, çıktı `dist`, watch path `mobile/*`. Netlify sitesi geri
   dönüş için bir süre ayakta bırakılmalı.)
+
+**Paylaşımlı platform alan adları Türkiye'de filtreleniyor — kendi alan adı
+şart.** `*.pages.dev` ofis ağından `ERR_CONNECTION_TIMED_OUT` veriyor (aynı
+soru işareti daha önce `*.railway.app` ve Netlify'da da yaşandı). Aynı adres
+mobil veriden açılıyor, yani site sağlam; engel ağ seviyesinde. Sonucu:
+**yayını `pages.dev` üzerinden test etmeye çalışmayın**, kendi alan adınızda
+geçici bir alt alan adı (`yeni.7medikal.com`) açıp orada test edin. Zaman
+aşımını "deploy bozuk" sanmak kolay — deploy bozuk olsaydı Cloudflare'in 404
+sayfası gelirdi, bağlantı hiç kurulamıyorsa sebep filtredir.
 - Depo: `umutdroid-collab/7AI`, geliştirme dalı
   `claude/mobile-app-inventory-invoice-qa-yzmx0q`
 

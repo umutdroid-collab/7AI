@@ -1,13 +1,15 @@
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Alert from "../../utils/alert";
 import { useFocusEffect } from "@react-navigation/native";
 import * as DocumentPicker from "expo-document-picker";
 import { fetchInvoices, fetchNotifications, invoiceExportUrl, uploadInvoicePdf } from "../../api/services";
 import { Invoice } from "../../types";
-import { colors, spacing } from "../../theme";
+import { colors, layout, radius, spacing, typography } from "../../theme";
 import InvoiceCard from "../../components/InvoiceCard";
 import ErrorRetry from "../../components/ErrorRetry";
+import Icon from "../../components/Icon";
+import { ActionPill, FilterChip, SearchField, WrapRow } from "../../components/ui";
 import { apiErrorMessage } from "../../api/client";
 import { dateStampedFilename, downloadFile } from "../../utils/download";
 import { useAuth } from "../../context/AuthContext";
@@ -88,51 +90,54 @@ export default function InvoiceListScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topRow}>
-        <TextInput
-          style={styles.search}
-          placeholder="Fatura no veya firma ara"
-          placeholderTextColor={colors.textMuted}
-          value={query}
-          onChangeText={setQuery}
-          onSubmitEditing={load}
-        />
-        {user?.role === "admin" && (
-          <TouchableOpacity style={styles.uploadButton} onPress={handleUpload} disabled={isUploading}>
-            {isUploading ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Text style={styles.uploadText}>📤</Text>
-            )}
-          </TouchableOpacity>
-        )}
-        {user?.role === "admin" && (
-          <TouchableOpacity style={styles.uploadButton} onPress={() => navigation.navigate("BulkUpload")}>
-            <Text style={styles.uploadText}>📚</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity style={styles.bellButton} onPress={() => navigation.navigate("Notifications")}>
-          <Text style={styles.bellText}>🔔</Text>
-          {unreadCount > 0 && (
-            <View style={styles.bellBadge}>
-              <Text style={styles.bellBadgeText}>{unreadCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
+      <View style={styles.controls}>
+        <View style={styles.topRow}>
+          <View style={styles.searchWrapper}>
+            <SearchField
+              value={query}
+              onChangeText={setQuery}
+              onSubmit={load}
+              placeholder="Fatura no veya firma ara"
+            />
+          </View>
 
-      <View style={styles.chipsRow}>
-        <Chip label="Tümü" active={filter === "all"} onPress={() => setFilter("all")} />
-        <Chip label="Vadesi Yaklaşan" active={filter === "upcoming"} onPress={() => setFilter("upcoming")} />
-        <Chip label="Vadesi Geçmiş" active={filter === "overdue"} onPress={() => setFilter("overdue")} />
-        <Chip label="Ödendi" active={filter === "paid"} onPress={() => setFilter("paid")} />
-        <TouchableOpacity style={styles.exportChip} onPress={handleExportExcel} disabled={isExporting}>
-          {isExporting ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <Text style={styles.exportChipText}>📊 Excel'e Aktar</Text>
+          {user?.role === "admin" && (
+            <>
+              <IconButton icon="upload" onPress={handleUpload} loading={isUploading} />
+              <IconButton icon="folder" onPress={() => navigation.navigate("BulkUpload")} />
+            </>
           )}
-        </TouchableOpacity>
+          <IconButton
+            icon="bell"
+            onPress={() => navigation.navigate("Notifications")}
+            badge={unreadCount}
+          />
+        </View>
+
+        <WrapRow>
+          <FilterChip label="Tümü" active={filter === "all"} onPress={() => setFilter("all")} />
+          <FilterChip
+            label="Vadesi Yaklaşan"
+            active={filter === "upcoming"}
+            onPress={() => setFilter("upcoming")}
+          />
+          <FilterChip
+            label="Vadesi Geçmiş"
+            active={filter === "overdue"}
+            onPress={() => setFilter("overdue")}
+          />
+          <FilterChip label="Ödendi" active={filter === "paid"} onPress={() => setFilter("paid")} />
+        </WrapRow>
+
+        <WrapRow>
+          <ActionPill
+            label="Excel'e Aktar"
+            icon="file"
+            tone="success"
+            loading={isExporting}
+            onPress={handleExportExcel}
+          />
+        </WrapRow>
       </View>
 
       {isLoading ? (
@@ -143,7 +148,7 @@ export default function InvoiceListScreen({ navigation }: any) {
         <FlatList
           data={invoices}
           keyExtractor={(i) => String(i.id)}
-          contentContainerStyle={{ padding: spacing(2) }}
+          contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={colors.primary} />}
           ListEmptyComponent={<Text style={styles.empty}>Fatura bulunamadı</Text>}
           renderItem={({ item }) => (
@@ -155,70 +160,63 @@ export default function InvoiceListScreen({ navigation }: any) {
   );
 }
 
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+/** Arama kutusunun yanındaki 36x36 kare eylem düğmeleri; zil olanı okunmamış
+ *  bildirim sayısını rozet olarak taşıyor. */
+function IconButton({
+  icon,
+  onPress,
+  loading,
+  badge,
+}: {
+  icon: React.ComponentProps<typeof Icon>["name"];
+  onPress: () => void;
+  loading?: boolean;
+  badge?: number;
+}) {
   return (
-    <TouchableOpacity style={[styles.chip, active && styles.chipActive]} onPress={onPress}>
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+    <TouchableOpacity style={styles.iconButton} onPress={onPress} disabled={loading}>
+      {loading ? (
+        <ActivityIndicator size="small" color={colors.primary} />
+      ) : (
+        <Icon name={icon} size={18} color={colors.textMuted} />
+      )}
+      {!!badge && badge > 0 && (
+        <View style={styles.iconBadge}>
+          <Text style={styles.iconBadgeText}>{badge > 99 ? "99+" : badge}</Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  topRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing(2), marginTop: spacing(2) },
-  search: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    paddingHorizontal: spacing(2),
-    paddingVertical: spacing(1.5),
-    color: colors.text,
+  controls: { padding: layout.screenPadding, gap: layout.cardGap },
+  topRow: { flexDirection: "row", alignItems: "center", gap: spacing(1) },
+  searchWrapper: { flex: 1 },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.card,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderSubtle,
   },
-  uploadButton: { marginLeft: spacing(1.5), padding: spacing(1) },
-  uploadText: { fontSize: 20 },
-  bellButton: { marginLeft: spacing(1.5), padding: spacing(1) },
-  bellText: { fontSize: 22 },
-  bellBadge: {
+  iconBadge: {
     position: "absolute",
-    top: 0,
-    right: 0,
-    backgroundColor: colors.danger,
-    borderRadius: 9,
+    top: -4,
+    right: -6,
     minWidth: 18,
-    height: 18,
+    paddingHorizontal: 4,
+    height: 16,
+    borderRadius: radius.full,
+    backgroundColor: colors.danger,
     alignItems: "center",
     justifyContent: "center",
   },
-  bellBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
-  chipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: spacing(2),
-    marginVertical: spacing(1),
-    gap: spacing(1),
-  },
-  chip: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    paddingHorizontal: spacing(2),
-    paddingVertical: spacing(1),
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
-  chipTextActive: { color: "#0f172a" },
-  exportChip: {
-    borderRadius: 20,
-    paddingHorizontal: spacing(2),
-    paddingVertical: spacing(1),
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderStyle: "dashed",
-  },
-  exportChipText: { color: colors.primary, fontSize: 13, fontWeight: "700" },
-  error: { color: colors.danger, textAlign: "center", marginTop: spacing(4) },
+  iconBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  list: { paddingHorizontal: layout.screenPadding, paddingBottom: spacing(6) },
   empty: { color: colors.textMuted, textAlign: "center", marginTop: spacing(4) },
 });

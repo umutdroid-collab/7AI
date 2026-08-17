@@ -11,7 +11,8 @@ import {
 } from "react-native";
 import { useAuth } from "../../context/AuthContext";
 import { apiErrorMessage } from "../../api/client";
-import { colors, spacing } from "../../theme";
+import { colors, layout, radius, spacing, typography } from "../../theme";
+import Icon from "../../components/Icon";
 import {
   clearRememberedLogin,
   loadRememberedLogin,
@@ -71,8 +72,13 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <Text style={styles.title}>7AI Saha Uygulaması</Text>
-      <Text style={styles.subtitle}>Stok, fatura ve klinik asistan tek yerde</Text>
+      <View style={styles.brand}>
+        <View style={styles.brandMark}>
+          <Icon name="stock" size={26} color={colors.primary} />
+        </View>
+        <Text style={styles.title}>7AI Saha Uygulaması</Text>
+        <Text style={styles.subtitle}>Stok, fatura ve klinik asistan tek yerde</Text>
+      </View>
 
       <View style={styles.form}>
         <Text style={styles.label}>E-posta</Text>
@@ -134,45 +140,53 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: spacing(3),
   },
-  title: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: "700",
-    textAlign: "center",
+  brand: { alignItems: "center", marginBottom: spacing(4) },
+  brandMark: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primaryTint,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    marginBottom: spacing(2),
   },
+  title: { color: colors.text, fontSize: 24, fontWeight: "700", textAlign: "center" },
   subtitle: {
+    ...typography.body,
     color: colors.textMuted,
-    fontSize: 14,
     textAlign: "center",
-    marginTop: spacing(1),
-    marginBottom: spacing(5),
+    marginTop: spacing(0.5),
   },
   form: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
+    // Masaüstünde form tüm pencereye yayılmasın.
+    width: "100%",
+    maxWidth: 420,
+    alignSelf: "center",
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
     padding: spacing(3),
   },
   label: {
+    ...typography.meta,
     color: colors.textMuted,
-    fontSize: 13,
-    marginBottom: spacing(0.5),
+    marginBottom: spacing(0.75),
     marginTop: spacing(2),
   },
   input: {
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 10,
-    paddingHorizontal: spacing(2),
+    borderRadius: radius.md,
+    paddingHorizontal: layout.cardPadding,
     paddingVertical: spacing(1.5),
     color: colors.text,
-    fontSize: 16,
+    fontSize: 15,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderSubtle,
   },
-  rememberRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginTop: spacing(2.5),
-  },
+  rememberRow: { flexDirection: "row", alignItems: "flex-start", marginTop: spacing(2.5) },
   checkbox: {
     width: 22,
     height: 22,
@@ -185,24 +199,17 @@ const styles = StyleSheet.create({
     marginRight: spacing(1.5),
   },
   checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
-  checkboxTick: { color: "#0f172a", fontSize: 14, fontWeight: "700", lineHeight: 18 },
+  checkboxTick: { color: colors.onPrimary, fontSize: 14, fontWeight: "700", lineHeight: 18 },
   rememberTextWrap: { flex: 1 },
-  rememberText: { color: colors.text, fontSize: 14, fontWeight: "600" },
-  rememberHint: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  error: {
-    color: colors.danger,
-    marginTop: spacing(2),
-  },
+  rememberText: { ...typography.bodyStrong, color: colors.text },
+  rememberHint: { ...typography.meta, color: colors.textMuted, marginTop: 2, lineHeight: 16 },
+  error: { color: colors.danger, ...typography.body, marginTop: spacing(2) },
   button: {
     backgroundColor: colors.primary,
-    borderRadius: 10,
+    borderRadius: radius.md,
     paddingVertical: spacing(1.75),
     alignItems: "center",
-    marginTop: spacing(4),
+    marginTop: spacing(3),
   },
-  buttonText: {
-    color: "#0f172a",
-    fontWeight: "700",
-    fontSize: 16,
-  },
+  buttonText: { color: colors.onPrimary, fontWeight: "700", fontSize: 15 },
 });

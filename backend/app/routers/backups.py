@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+import os
+import zipfile
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -44,6 +47,52 @@ def offsite_list(_: User = Depends(require_admin)):
         return offsite_backup.list_remote()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Dış depoya erişilemedi: {e}")
+
+
+@router.post("/offsite/{filename}/pull")
+def pull_from_offsite(filename: str, _: User = Depends(require_admin)):
+    """Dış depodaki bir yedeği yerel klasöre indirir; sonra normal
+    `POST /backups/{dosya}/restore` ile geri yüklenebilir.
+
+    Felaket senaryosunun eksik halkası buydu: Railway diski gittiğinde elde
+    yalnızca R2 kopyası kalıyor ve geri yükleme onu göremiyordu.
+    """
+    from app.config import get_settings
+
+    try:
+        path = offsite_backup.download(filename, get_settings().backup_dir)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Dış depodan indirilemedi: {e}")
+    return {"ok": True, "filename": os.path.basename(path), "size_bytes": os.path.getsize(path)}
+
+
+@router.post("/upload")
+async def upload_backup(file: UploadFile = File(...), _: User = Depends(require_admin)):
+    """Elde tutulan bir .zip yedeği sisteme geri koyar.
+
+    Dış depo da kaybedilmişse (ya da hiç kurulmamışsa) elle indirilmiş bir
+    yedekten dönmenin tek yolu. Yükleme geri yüklemez; ardından
+    `POST /backups/{dosya}/restore?confirm=true` çağrılmalı.
+    """
+    filename = os.path.basename(file.filename or "")
+    if not filename.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Yalnızca .zip yedek dosyası yüklenebilir")
+
+    from app.config import get_settings
+
+    folder = get_settings().backup_dir
+    os.makedirs(folder, exist_ok=True)
+    dest = os.path.join(folder, filename)
+    with open(dest, "wb") as out:
+        while chunk := await file.read(1024 * 1024):
+            out.write(chunk)
+
+    # Bozuk/yanlış dosya geri yükleme anında değil, şimdi fark edilmeli.
+    if not zipfile.is_zipfile(dest):
+        os.remove(dest)
+        raise HTTPException(status_code=400, detail="Dosya geçerli bir .zip arşivi değil")
+
+    return {"ok": True, "filename": filename, "size_bytes": os.path.getsize(dest)}
 
 
 @router.post("/{filename}/offsite-upload")

@@ -5,6 +5,8 @@ nesne konularak sınanır: önemli olan çağrının doğru yapılması ve hatan
 yerel yedeklemeyi bozmaması.
 """
 
+import os
+
 import pytest
 
 from app.services import offsite_backup
@@ -129,3 +131,103 @@ def _dt(offset: int):
     from datetime import datetime, timedelta, timezone
 
     return datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(days=offset)
+
+
+# --- Felaket senaryosu: dış depodan geri dönüş ------------------------------
+#
+# Dış kopyanın var olması yetmiyor; geri yükleme yalnızca yerel klasördeki
+# dosyayı okuyor. Railway diski gittiğinde içeri bir yol olmalı.
+
+
+def test_offsite_copy_can_be_pulled_back_locally(client, admin, monkeypatch, tmp_path):
+    from app.config import get_settings
+    from app.services import offsite_backup
+
+    class FakeDownload:
+        def download_file(self, bucket, key, dest):
+            assert key == "yedekler/yedek-20260101-000000-0.zip"
+            with open(dest, "wb") as f:
+                f.write(b"PK\x03\x04 sahte")
+
+    monkeypatch.setattr(offsite_backup, "is_configured", lambda: True)
+    monkeypatch.setattr(offsite_backup, "_client", lambda: FakeDownload())
+
+    r = client.post("/backups/offsite/yedek-20260101-000000-0.zip/pull", headers=admin)
+
+    assert r.status_code == 200
+    dest = os.path.join(get_settings().backup_dir, "yedek-20260101-000000-0.zip")
+    assert os.path.exists(dest)
+
+
+def test_pull_rejects_path_traversal(monkeypatch, tmp_path):
+    """Uzaktan gelen ad da güvenilmez: yalnızca dosya adı kullanılmalı."""
+    from app.services import offsite_backup
+
+    seen = {}
+
+    class FakeDownload:
+        def download_file(self, bucket, key, dest):
+            seen["key"], seen["dest"] = key, dest
+            open(dest, "wb").close()
+
+    monkeypatch.setattr(offsite_backup, "is_configured", lambda: True)
+    monkeypatch.setattr(offsite_backup, "_client", lambda: FakeDownload())
+
+    offsite_backup.download("../../etc/kotu.zip", str(tmp_path))
+
+    assert seen["key"] == "yedekler/kotu.zip"
+    assert os.path.dirname(seen["dest"]) == str(tmp_path)
+
+
+def test_pull_surfaces_the_real_error(client, admin, monkeypatch):
+    """Yükleme sessizce yutuyor ama geri yükleme bilinçli bir işlem; hata
+    kullanıcıya görünmeli."""
+    from app.services import offsite_backup
+
+    monkeypatch.setattr(offsite_backup, "is_configured", lambda: True)
+
+    class Broken:
+        def download_file(self, *_):
+            raise RuntimeError("NoSuchKey")
+
+    monkeypatch.setattr(offsite_backup, "_client", lambda: Broken())
+
+    r = client.post("/backups/offsite/yok.zip/pull", headers=admin)
+    assert r.status_code == 502
+    assert "NoSuchKey" in r.json()["detail"]
+
+
+def test_backup_zip_can_be_uploaded_and_restored(client, admin):
+    """Dış depo da yoksa elde tutulan zip'ten dönebilmeli."""
+    filename = client.post("/backups/run", headers=admin).json()["filename"]
+    content = client.get(f"/backups/{filename}/download", headers=admin).content
+
+    # Yerel kopyayı sil - disk kaybı taklidi.
+    client.delete(f"/backups/{filename}", headers=admin)
+    assert client.get("/backups", headers=admin).json() == []
+
+    r = client.post(
+        "/backups/upload",
+        headers=admin,
+        files={"file": (filename, content, "application/zip")},
+    )
+    assert r.status_code == 200
+
+    restore = client.post(f"/backups/{filename}/restore", params={"confirm": True}, headers=admin)
+    assert restore.status_code == 200
+
+
+def test_upload_rejects_a_non_zip(client, admin):
+    r = client.post(
+        "/backups/upload",
+        headers=admin,
+        files={"file": ("yedek.zip", b"bu bir zip degil", "application/zip")},
+    )
+    assert r.status_code == 400
+
+
+def test_recovery_endpoints_are_admin_only(client, employee):
+    assert client.post("/backups/offsite/x.zip/pull", headers=employee).status_code == 403
+    assert client.post(
+        "/backups/upload", headers=employee, files={"file": ("a.zip", b"x", "application/zip")}
+    ).status_code == 403

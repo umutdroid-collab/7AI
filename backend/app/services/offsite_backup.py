@@ -85,6 +85,31 @@ def list_remote() -> list[dict]:
     return sorted(items, key=lambda i: i["created_at"], reverse=True)
 
 
+def download(filename: str, dest_folder: str) -> str:
+    """Dış depodaki bir yedeği yerel yedek klasörüne indirir, yolunu döner.
+
+    Bu olmadan dış kopya, tasarlandığı senaryoda (Railway diski gitti) işe
+    yaramıyordu: geri yükleme yalnızca yerel klasördeki dosyayı okuyor, dış
+    depodan içeri bir yol yoktu. Zinciri kapatan halka bu.
+
+    Yükleme/indirmenin aksine burada hata **yükseltilir**: kullanıcı bilinçli
+    olarak bir geri yükleme başlatıyor, sessizce başarısız olması tehlikeli.
+    """
+    if not is_configured():
+        raise RuntimeError("Dış depo yapılandırılmamış")
+
+    # Yol geçişine karşı: uzaktan gelen ad da olsa yalnızca dosya adı kullanılır.
+    safe_name = os.path.basename(filename)
+    if not safe_name.endswith(".zip"):
+        raise ValueError("Yalnızca .zip yedekleri indirilebilir")
+
+    os.makedirs(dest_folder, exist_ok=True)
+    dest_path = os.path.join(dest_folder, safe_name)
+    _client().download_file(settings.backup_s3_bucket, PREFIX + safe_name, dest_path)
+    logger.info("Yedek dış depodan indirildi: %s", safe_name)
+    return dest_path
+
+
 def prune() -> int:
     """Son `backup_s3_keep_count` kopyayı bırakır, kalanı siler.
 

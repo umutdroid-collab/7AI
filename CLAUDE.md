@@ -88,6 +88,23 @@ Yapılandırılmamışsa sessizce atlanır; **yükleme başarısız olursa hata
 yükseltilmez** — dış kopya alınamadı diye yerel yedeklemeyi başarısız saymak
 yanlış olurdu. Gerçek hatayı görmek için `GET /backups/offsite/status`.
 
+**Dış depodan geri dönüş yolu da olmalı.** Geri yükleme yalnızca yerel
+klasördeki dosyayı okuyor; dış kopya bir süre yalnızca *dışarı* giden bir
+yoldu, yani tasarlandığı senaryoda (Railway diski gitti) elde kopya olup
+sisteme verilemiyordu. `POST /backups/offsite/{dosya}/pull` uzaktaki kopyayı
+yerel klasöre indirir, `POST /backups/upload` elde tutulan bir .zip'i
+sisteme koyar; ikisinin de ardından normal `restore` çağrılır. Yüklemenin
+aksine indirme **hata yükseltir**: kullanıcı bilinçli bir geri yükleme
+başlatıyor, sessizce başarısız olması tehlikeli.
+
+**Kodun yedeği git'tir, yedek .zip'i değil.** Zip yalnızca veritabanı ve
+yüklenen dosyaları taşır. Kurulumun kendisi (Railway/Cloudflare/R2 ayarları,
+hangi ortam değişkeni nereden alınır, sıfırdan kurtarma adımları)
+`DEPLOYMENT.md`'de; kod değiştiğinde orayı da güncelleyin — eskimiş bir
+kurtarma rehberi kurtarma anında fark edilir. **Sırlar hiçbir yerde
+yedeklenmiyor**, yalnızca Railway → Variables içinde durur; hepsi yeniden
+üretilebilir ama nereden alınacağı bilinmeli (DEPLOYMENT.md bölüm 3).
+
 **Yedek geri yükleme vektör dizinini diskte değiştirir.** Chroma istemcileri
 süreç içinde yola göre önbelleğe aldığı için `vector_store.reset_client()`
 hem kendi değişkenlerini hem `SharedSystemClient.clear_system_cache()`
@@ -323,7 +340,9 @@ normal akışta hatalar sessizce yutulur:
 - `GET /backups/size-report` (yedeğin içinde neyin ne kadar yer kapladığı —
   sıkıştırmayı doğru yere uygulamak için önce buna bakın)
 - `GET /backups/offsite/status` (dış depoya erişimi sınar), `GET /backups/offsite`
-  (uzaktaki kopyalar), `POST /backups/{dosya}/offsite-upload` (elle gönderir)
+  (uzaktaki kopyalar), `POST /backups/{dosya}/offsite-upload` (elle gönderir),
+  `POST /backups/offsite/{dosya}/pull` (uzaktaki kopyayı geri indirir),
+  `POST /backups/upload` (elde tutulan .zip'i sisteme koyar)
 
 ## Açık işler
 

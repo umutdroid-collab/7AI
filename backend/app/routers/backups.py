@@ -6,7 +6,7 @@ from app.database import get_db
 from app.deps import require_admin
 from app.services import audit, offsite_backup
 from app.models import User
-from app.services.backup import backup_path, create_backup, list_backups, restore_backup
+from app.services.backup import backup_path, create_backup, list_backups, restore_backup, size_report
 
 router = APIRouter(prefix="/backups", tags=["backups"])
 
@@ -20,6 +20,13 @@ def get_backups(_: User = Depends(require_admin)):
 def run_backup(_: User = Depends(require_admin)):
     filename = create_backup()
     return {"ok": True, "filename": filename}
+
+
+@router.get("/size-report")
+def get_size_report(_: User = Depends(require_admin)):
+    """Yedeğin içinde neyin ne kadar yer kapladığı. Sıkıştırma kararını
+    tahminle değil bu çıktıya bakarak verin."""
+    return size_report()
 
 
 @router.get("/offsite/status")

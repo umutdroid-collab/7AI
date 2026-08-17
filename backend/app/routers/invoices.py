@@ -13,7 +13,7 @@ from app.schemas import InvoiceOut, InvoiceUpdate
 from app.services.excel import build_workbook
 from app.services.invoice_watcher import ingest_pdf, scan_existing_invoices
 from app.utils import safe_pdf_filename, unique_destination
-from app.services import audit
+from app.services import audit, pdf_compress
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 settings = get_settings()
@@ -132,6 +132,36 @@ def export_invoices(
 def rescan_invoice_folder(_: User = Depends(require_admin)):
     scan_existing_invoices()
     return {"ok": True}
+
+
+@router.post("/compress-existing")
+def compress_existing_invoice_pdfs(_: User = Depends(require_admin)):
+    """Küçültme eklenmeden önce inmiş fatura PDF'lerini toplu küçültür.
+
+    Yeni faturalar zaten küçültülüyor; bu uç birikmiş dosyalar için, elle
+    çalıştırılır. Kazancın büyüğü taranmış faturalardan gelir - metin tabanlı
+    e-faturalarda kazanç eşiğin altında kalır ve dosyaya dokunulmaz, o yüzden
+    `islenen_pdf` toplam dosya sayısından küçük çıkabilir.
+    """
+    total_before = total_after = processed = seen = 0
+    # evobulut/ alt klasörü de dahil: oradaki PDF'ler de yedeğe giriyor.
+    for root, _dirs, files in os.walk(settings.invoice_folder):
+        for name in files:
+            if not name.lower().endswith(".pdf"):
+                continue
+            seen += 1
+            result = pdf_compress.compress_invoice_pdf(os.path.join(root, name))
+            total_before += result["before"]
+            total_after += result["after"]
+            processed += result["compressed"]
+
+    return {
+        "taranan_pdf": seen,
+        "islenen_pdf": processed,
+        "onceki_toplam_mb": round(total_before / 1024 / 1024, 2),
+        "sonraki_toplam_mb": round(total_after / 1024 / 1024, 2),
+        "kazanilan_mb": round((total_before - total_after) / 1024 / 1024, 2),
+    }
 
 
 @router.get("/evobulut-diagnostics")

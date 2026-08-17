@@ -217,6 +217,30 @@ EXIF yönü uygulanır (yoksa fotoğraflar yan yatık görünür) ve EXIF taşı
 check-in kaydı fotoğraf yüzünden kaybedilmemeli. Birikmiş eski fotoğraflar
 için `POST /checkins/compress-existing` (admin) var.
 
+**Fatura PDF'leri de küçültülür ama koşullu** (`services/pdf_compress.py`).
+Fotoğraftan farkı: kazanç garanti değil. EvoBulut'tan gelen e-faturalar metin
+tabanlıdır, içlerinde küçültülecek görüntü yoktur; taranıp elle bırakılan
+faturalar ise sayfa başına birkaç MB'lık görüntü taşır ve asıl kazanç
+oradadır (ölçüm: 300 DPI A4 tarama 138 KB → 34 KB, görüntü 2480 px'ten
+1600 px'e inip DCTDecode'a çevrilerek). Bu yüzden **sonuç en az %10 küçük
+değilse dosya hiç değiştirilmez** — aksi halde her `rescan` çağrısında zaten
+optimum olan PDF'ler boşuna yeniden yazılırdı. Şeffaflık/maske taşıyan
+görüntülere dokunulmaz (JPEG'e çevrilirse bozulurlar) ve hata hâlinde
+orijinal korunur. Küçültme **metin çıkarımından sonra** çağrılır ve zaten
+metni etkilemez; fatura alanları aynı okunur. Tek bağlama noktası
+`invoice_watcher.ingest_pdf` (yükleme, toplu yükleme ve `rescan` hepsi oradan
+geçer) + `evobulut_sync._download_pdf` (o PDF'ler watchdog'un görmediği
+`evobulut/` alt klasörüne indiği için ingest'ten geçmez). Birikmişler için
+`POST /invoices/compress-existing`.
+
+**Yedekte kazanılan yer katlanarak sayılır**: her .zip *tüm* yüklenen
+dosyaları içeriyor ve yerelde `BACKUP_KEEP_COUNT` (8), dış depoda
+`BACKUP_S3_KEEP_COUNT` (12) kopya tutuluyor — yani tek dosyada kazanılan
+megabayt yirmiyle çarpılıyor. Neyin baskın olduğunu tahmin etmeyin:
+`GET /backups/size-report` klasör kırılımını, sıkıştırılmamış toplamı ve son
+yedeğin gerçek boyutunu döner. (Zip'in kendi DEFLATE'i PDF/JPEG için hiçbir
+şey kazandırmaz — dosyaların içi zaten sıkıştırılmış.)
+
 **iOS'ta web push güvenilir değil** (16.4+ ve ana ekrana ekleme şartı, simge
 silinince susar). Vade/SKT uyarıları bu yüzden push değil, her sabah
 `DIGEST_HOUR`'da gönderilen tek bir **e-posta özeti** (`daily_digest.py`).
@@ -280,6 +304,11 @@ normal akışta hatalar sessizce yutulur:
 - `POST /invoices/evobulut-sync` (senkronizasyonu elle tetikler)
 - `POST /checkins/compress-existing` (eski fotoğrafları toplu küçültür, kaç MB
   kazanıldığını döner)
+- `POST /invoices/compress-existing` (birikmiş fatura PDF'lerini küçültür;
+  `taranan_pdf` > `islenen_pdf` normaldir — metin tabanlı e-faturalarda kazanç
+  eşiğin altında kalır ve dosyaya dokunulmaz)
+- `GET /backups/size-report` (yedeğin içinde neyin ne kadar yer kapladığı —
+  sıkıştırmayı doğru yere uygulamak için önce buna bakın)
 - `GET /backups/offsite/status` (dış depoya erişimi sınar), `GET /backups/offsite`
   (uzaktaki kopyalar), `POST /backups/{dosya}/offsite-upload` (elle gönderir)
 

@@ -113,6 +113,44 @@ def list_backups() -> list[dict]:
     ]
 
 
+def size_report() -> dict:
+    """Yedeğe neyin ne kadar yer kapladığını gösterir.
+
+    "Yedekler büyüdü" denildiğinde hangi klasörün baskın olduğunu tahmin
+    etmeye gerek kalmasın diye: sıkıştırmayı doğru yere uygulamanın tek yolu
+    önce ölçmek. Yerelde `backup_keep_count`, dış depoda `backup_s3_keep_count`
+    kopya tutulduğu için tek dosyada kazanılan yer o sayılarla çarpılır.
+    """
+    folders = []
+    total = 0
+    for setting_name, arc_prefix in FOLDER_ARCNAMES:
+        folder = getattr(settings, setting_name)
+        size = count = 0
+        for root, _dirs, files in os.walk(folder):
+            for name in files:
+                try:
+                    size += os.path.getsize(os.path.join(root, name))
+                except OSError:
+                    continue
+                count += 1
+        total += size
+        folders.append({"klasor": arc_prefix, "dosya_sayisi": count, "mb": round(size / 1024 / 1024, 2)})
+
+    sqlite_path = _sqlite_path()
+    db_bytes = os.path.getsize(sqlite_path) if sqlite_path and os.path.exists(sqlite_path) else 0
+    total += db_bytes
+
+    backups = list_backups()
+    return {
+        "veritabani_mb": round(db_bytes / 1024 / 1024, 2),
+        "klasorler": sorted(folders, key=lambda f: f["mb"], reverse=True),
+        "sikistirilmamis_toplam_mb": round(total / 1024 / 1024, 2),
+        "son_yedek_mb": round(backups[0]["size_bytes"] / 1024 / 1024, 2) if backups else None,
+        "yerel_yedek_sayisi": len(backups),
+        "yerel_yedekler_toplam_mb": round(sum(b["size_bytes"] for b in backups) / 1024 / 1024, 2),
+    }
+
+
 def backup_path(filename: str) -> Path:
     """Yol geçişi (path traversal) girişimlerine karşı sadece dosya adını kullanır."""
     safe_name = os.path.basename(filename)

@@ -13,6 +13,9 @@ pdfplumber==0.11.4
 # Check-in fotoğraflarının sunucuda küçültülmesi için (pdfplumber de dolaylı
 # olarak çekiyor ama artık doğrudan kullanıyoruz).
 Pillow==12.3.0
+# Fatura PDF'lerinin küçültülmesi için (gömülü tarama görüntülerini yeniden
+# sıkıştırır; qpdf'i kendi tekerleğiyle getirir, ek sistem paketi gerekmez).
+pikepdf==10.11.0
 chromadb==0.5.15
 onnxruntime==1.19.2
 requests==2.32.3

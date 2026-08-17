@@ -145,6 +145,20 @@ export function Fab({ onPress, icon = "plus" }: { onPress: () => void; icon?: Ic
   );
 }
 
+/**
+ * Geniş ekranda içeriği ortalanmış bir sütunda tutar.
+ *
+ * Tasarım 402 px telefon için çizildi; masaüstü tarayıcıda (saha.7medikal.com
+ * bilgisayardan da açılıyor) kartlar 2000 px'e yayılınca satırlar okunamayacak
+ * kadar uzuyor ve kart içindeki hizalamalar dağılıyor. Liste ve kontrol
+ * kapsayıcılarına uygulanır; alt gezinme çubuğu tam genişlikte kalmalı.
+ */
+export const contentColumn = {
+  width: "100%",
+  maxWidth: layout.maxContentWidth,
+  alignSelf: "center",
+} as const;
+
 /** Yatay kaydırılabilir yerine saran satır: React Native Web'de yatay
  *  ScrollView yükseklik alamayıp görünmez olabiliyor (fatura filtre
  *  çiplerinde bizzat yaşandı). */

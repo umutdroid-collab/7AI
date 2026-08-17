@@ -17,6 +17,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { askAssistant, fetchClinicalDocuments, uploadClinicalDocument } from "../../api/services";
 import { ChatMessage } from "../../types";
 import { colors, spacing } from "../../theme";
+import { contentColumn } from "../../components/ui";
 import { apiErrorMessage } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 
@@ -121,7 +122,7 @@ export default function AssistantChatScreen() {
         ref={listRef}
         data={messages}
         keyExtractor={(m) => m.id}
-        contentContainerStyle={{ padding: spacing(2) }}
+        contentContainerStyle={styles.scrollContent}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         renderItem={({ item }) => <MessageBubble message={item} />}
       />
@@ -183,6 +184,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 }
 
 const styles = StyleSheet.create({
+  scrollContent: { ...contentColumn, padding: spacing(2) },
   container: { flex: 1, backgroundColor: colors.background },
   adminBar: {
     flexDirection: "row",

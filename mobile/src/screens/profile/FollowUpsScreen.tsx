@@ -20,6 +20,7 @@ import {
 } from "../../api/services";
 import { FollowUp } from "../../types";
 import { colors, spacing } from "../../theme";
+import { contentColumn } from "../../components/ui";
 import ErrorRetry from "../../components/ErrorRetry";
 
 function todayIso() {
@@ -124,7 +125,7 @@ export default function FollowUpsScreen({ route }: any) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing(2) }}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.formCard}>
         <Text style={styles.formTitle}>Yeni hatırlatıcı</Text>
         <TextInput
@@ -207,6 +208,7 @@ export default function FollowUpsScreen({ route }: any) {
 }
 
 const styles = StyleSheet.create({
+  scrollContent: { ...contentColumn, padding: spacing(2) },
   container: { flex: 1, backgroundColor: colors.background },
   formCard: {
     backgroundColor: colors.surface,

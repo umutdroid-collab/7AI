@@ -9,7 +9,7 @@ import { colors, layout, radius, spacing, typography } from "../../theme";
 import InvoiceCard from "../../components/InvoiceCard";
 import ErrorRetry from "../../components/ErrorRetry";
 import Icon from "../../components/Icon";
-import { ActionPill, FilterChip, SearchField, WrapRow } from "../../components/ui";
+import { ActionPill, contentColumn, FilterChip, SearchField, WrapRow } from "../../components/ui";
 import { apiErrorMessage } from "../../api/client";
 import { dateStampedFilename, downloadFile } from "../../utils/download";
 import { useAuth } from "../../context/AuthContext";
@@ -191,7 +191,7 @@ function IconButton({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  controls: { padding: layout.screenPadding, gap: layout.cardGap },
+  controls: { ...contentColumn, padding: layout.screenPadding, gap: layout.cardGap },
   topRow: { flexDirection: "row", alignItems: "center", gap: spacing(1) },
   searchWrapper: { flex: 1 },
   iconButton: {
@@ -217,6 +217,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   iconBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
-  list: { paddingHorizontal: layout.screenPadding, paddingBottom: spacing(6) },
+  list: { ...contentColumn, paddingHorizontal: layout.screenPadding, paddingBottom: spacing(6) },
   empty: { color: colors.textMuted, textAlign: "center", marginTop: spacing(4) },
 });

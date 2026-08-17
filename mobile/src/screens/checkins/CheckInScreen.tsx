@@ -23,6 +23,7 @@ import {
 import { dateStampedFilename, downloadFile } from "../../utils/download";
 import { CheckIn, Hospital } from "../../types";
 import { colors, spacing } from "../../theme";
+import { contentColumn } from "../../components/ui";
 import { apiErrorMessage, TOKEN_KEY } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import CheckInCard from "../../components/CheckInCard";
@@ -220,7 +221,7 @@ export default function CheckInScreen({ navigation }: any) {
         onClose={() => setIsCameraVisible(false)}
         onCapture={handleWebCapture}
       />
-      <ScrollView contentContainerStyle={{ padding: spacing(2) }} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.formCard}>
           <Text style={styles.formTitle}>Bugün nerede olduğunuzu bildirin</Text>
 
@@ -363,6 +364,7 @@ export default function CheckInScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  scrollContent: { ...contentColumn, padding: spacing(2) },
   container: { flex: 1, backgroundColor: colors.background },
   formCard: {
     backgroundColor: colors.surface,

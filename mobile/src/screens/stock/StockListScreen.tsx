@@ -11,7 +11,7 @@ import { dateStampedFilename, downloadFile } from "../../utils/download";
 import { useAuth } from "../../context/AuthContext";
 import HospitalPickerModal from "../../components/HospitalPickerModal";
 import ErrorRetry from "../../components/ErrorRetry";
-import { ActionPill, Fab, FilterChip, SearchField, SegmentedToggle, WrapRow } from "../../components/ui";
+import { ActionPill, contentColumn, Fab, FilterChip, SearchField, SegmentedToggle, WrapRow } from "../../components/ui";
 
 type ViewMode = "active" | "used";
 
@@ -182,10 +182,10 @@ export default function StockListScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  controls: {
+  controls: { ...contentColumn,
     padding: layout.screenPadding,
     gap: layout.cardGap,
   },
-  list: { paddingHorizontal: layout.screenPadding, paddingBottom: spacing(10) },
+  list: { ...contentColumn, paddingHorizontal: layout.screenPadding, paddingBottom: spacing(10) },
   empty: { color: colors.textMuted, textAlign: "center", marginTop: spacing(4) },
 });

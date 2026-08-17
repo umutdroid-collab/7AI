@@ -5,6 +5,7 @@ import Alert from "../../utils/alert";
 import { adjustSalesTargetProgress, deleteSalesTarget, fetchSalesTargets } from "../../api/services";
 import { SalesTarget } from "../../types";
 import { colors, spacing } from "../../theme";
+import { contentColumn } from "../../components/ui";
 import { apiErrorMessage } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import ErrorRetry from "../../components/ErrorRetry";
@@ -147,7 +148,7 @@ export default function PersonelTakipScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ padding: spacing(2) }}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         {user?.role === "admin" && (
           <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate("AddSalesTarget")}>
             <Text style={styles.addButtonText}>+ Yeni Hedef</Text>
@@ -169,6 +170,7 @@ export default function PersonelTakipScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  scrollContent: { ...contentColumn, padding: spacing(2) },
   container: { flex: 1, backgroundColor: colors.background },
   addButton: {
     backgroundColor: colors.primary,

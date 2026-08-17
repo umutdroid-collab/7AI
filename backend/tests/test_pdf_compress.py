@@ -171,3 +171,96 @@ def test_size_report_breaks_down_the_backup(client, admin):
 
 def test_size_report_is_admin_only(client, employee):
     assert client.get("/backups/size-report", headers=employee).status_code == 403
+
+
+# --- Yedekleme zamanlaması -------------------------------------------------
+#
+# Canlıda (17.08.2026) hiç yedek alınmamış olduğu görüldü: eski
+# `interval, weeks=1` işi ilk çalışmasını açılıştan bir hafta sonraya
+# koyuyordu ve her deploy süreci yeniden başlatıp sayacı sıfırlıyordu.
+
+
+def test_weekly_backup_is_scheduled_at_a_fixed_time(tmp_path, monkeypatch):
+    """Deploy'un sayacı sıfırlayamaması için sabit saatli cron kullanılmalı."""
+    from app.services import backup
+
+    monkeypatch.setattr(backup.settings, "backup_dir", str(tmp_path), raising=False)
+    scheduler = backup.start_backup_scheduler()
+    try:
+        job = scheduler.get_job("weekly-backup")
+        assert job is not None
+        assert "cron" in str(job.trigger)
+    finally:
+        scheduler.shutdown(wait=False)
+
+
+def test_missing_backup_schedules_a_catch_up_run(tmp_path, monkeypatch):
+    from app.services import backup
+
+    monkeypatch.setattr(backup.settings, "backup_dir", str(tmp_path), raising=False)
+    scheduler = backup.start_backup_scheduler()
+    try:
+        assert scheduler.get_job("catch-up-backup") is not None
+    finally:
+        scheduler.shutdown(wait=False)
+
+
+def test_recent_backup_skips_the_catch_up_run(tmp_path, monkeypatch):
+    """Süreç sık yeniden başlarsa telafi tekrar tekrar çalışmamalı; ölçü
+    bellekteki sayaç değil diskteki en yeni yedek."""
+    from app.services import backup
+
+    monkeypatch.setattr(backup.settings, "backup_dir", str(tmp_path), raising=False)
+    (tmp_path / "yedek-20260817-000000-0.zip").write_bytes(b"taze")
+
+    scheduler = backup.start_backup_scheduler()
+    try:
+        assert scheduler.get_job("catch-up-backup") is None
+        assert backup.newest_backup_age_days() < 1
+    finally:
+        scheduler.shutdown(wait=False)
+
+
+def test_stale_backup_triggers_a_catch_up_run(tmp_path, monkeypatch):
+    import os
+    import time
+
+    from app.services import backup
+
+    monkeypatch.setattr(backup.settings, "backup_dir", str(tmp_path), raising=False)
+    old = tmp_path / "yedek-20260101-000000-0.zip"
+    old.write_bytes(b"eski")
+    stale = time.time() - (backup.BACKUP_INTERVAL_DAYS + 1) * 86400
+    os.utime(old, (stale, stale))
+
+    scheduler = backup.start_backup_scheduler()
+    try:
+        assert scheduler.get_job("catch-up-backup") is not None
+    finally:
+        scheduler.shutdown(wait=False)
+
+
+def test_size_report_lists_the_biggest_files(client, admin):
+    """Klasör toplamı nereye bakılacağını söyler, dosya listesi neyin
+    şişirdiğini."""
+    import os
+
+    from app.config import get_settings
+
+    folder = get_settings().invoice_folder
+    os.makedirs(folder, exist_ok=True)
+    with open(os.path.join(folder, "buyuk.pdf"), "wb") as f:
+        f.write(b"0" * 300_000)
+    with open(os.path.join(folder, "kucuk.pdf"), "wb") as f:
+        f.write(b"0" * 1_000)
+
+    body = client.get("/backups/size-report", headers=admin).json()
+
+    listed = body["en_buyuk_dosyalar"]
+    names = [f["dosya"] for f in listed]
+    # Vektör indeksi testler arasında diskte kalıyor ve boyutu değişken; bu
+    # yüzden mutlak sıra değil, sözleşme sınanır: liste büyükten küçüğe ve
+    # kayda değer dosya içinde.
+    assert [f["mb"] for f in listed] == sorted((f["mb"] for f in listed), reverse=True)
+    assert os.path.join("invoices", "buyuk.pdf") in names
+    assert os.path.join("invoices", "kucuk.pdf") not in names[: names.index(os.path.join("invoices", "buyuk.pdf"))]

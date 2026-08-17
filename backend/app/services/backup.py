@@ -8,8 +8,9 @@ import os
 import shutil
 import sqlite3
 import tempfile
+import time
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -122,19 +123,27 @@ def size_report() -> dict:
     kopya tutulduğu için tek dosyada kazanılan yer o sayılarla çarpılır.
     """
     folders = []
+    biggest: list[tuple[int, str]] = []
     total = 0
     for setting_name, arc_prefix in FOLDER_ARCNAMES:
         folder = getattr(settings, setting_name)
         size = count = 0
         for root, _dirs, files in os.walk(folder):
             for name in files:
+                full = os.path.join(root, name)
                 try:
-                    size += os.path.getsize(os.path.join(root, name))
+                    file_size = os.path.getsize(full)
                 except OSError:
                     continue
+                size += file_size
                 count += 1
+                biggest.append((file_size, os.path.join(arc_prefix, os.path.relpath(full, folder))))
         total += size
         folders.append({"klasor": arc_prefix, "dosya_sayisi": count, "mb": round(size / 1024 / 1024, 2)})
+
+    # Klasör toplamı "nereye bakmalı"yı söyler ama "neyi silmeli"yi söylemez;
+    # tek bir şişmiş dosya (ör. Chroma'nın WAL'ı) toplamı domine edebiliyor.
+    biggest.sort(reverse=True)
 
     sqlite_path = _sqlite_path()
     db_bytes = os.path.getsize(sqlite_path) if sqlite_path and os.path.exists(sqlite_path) else 0
@@ -144,6 +153,9 @@ def size_report() -> dict:
     return {
         "veritabani_mb": round(db_bytes / 1024 / 1024, 2),
         "klasorler": sorted(folders, key=lambda f: f["mb"], reverse=True),
+        "en_buyuk_dosyalar": [
+            {"dosya": name, "mb": round(size / 1024 / 1024, 2)} for size, name in biggest[:12]
+        ],
         "sikistirilmamis_toplam_mb": round(total / 1024 / 1024, 2),
         "son_yedek_mb": round(backups[0]["size_bytes"] / 1024 / 1024, 2) if backups else None,
         "yerel_yedek_sayisi": len(backups),
@@ -203,9 +215,51 @@ def restore_backup(filename: str) -> None:
     logger.warning("Sistem şu yedekten geri yüklendi: %s", filename)
 
 
+BACKUP_INTERVAL_DAYS = 7
+# Gecikmiş yedek açılışta hemen alınmaz: 200 MB'lık bir zip üretmek CPU ve
+# disk yiyor, platformun açılış sağlık kontrolüne denk gelmesin.
+CATCH_UP_DELAY_SECONDS = 120
+
+
+def newest_backup_age_days() -> float | None:
+    """En yeni yedeğin kaç gün önce alındığı; hiç yedek yoksa None."""
+    files = sorted(_backup_dir().glob("yedek-*.zip"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not files:
+        return None
+    return (time.time() - files[0].stat().st_mtime) / 86400
+
+
 def start_backup_scheduler() -> BackgroundScheduler:
+    """Haftalık yedekleme.
+
+    Eskiden `interval, weeks=1` kullanılıyordu ve bu, ilk çalışmayı açılıştan
+    **bir hafta sonraya** koyuyordu. Railway her deploy'da süreci yeniden
+    başlattığı için sayaç sürekli sıfırlanıyor ve haftada birden sık deploy
+    edildiğinde yedek **hiç alınmıyordu** - canlıda doğrulandı (17.08.2026:
+    `size-report` → `yerel_yedek_sayisi: 0`, dış depoya da kopyalanacak bir
+    şey yoktu).
+
+    Çözüm iki parçalı: sabit bir haftalık saat (deploy sayaca dokunmaz) ve
+    açılışta diskteki en yeni yedeğe bakıp gecikmişse bir kerelik telafi
+    çalışması. Telafinin ölçüsü diskteki dosya olduğu için süreç kaç kez
+    yeniden başlarsa başlasın haftada bir yedekten fazlası alınmaz.
+    """
     scheduler = BackgroundScheduler(timezone="Europe/Istanbul")
-    scheduler.add_job(create_backup, "interval", weeks=1)
+    scheduler.add_job(create_backup, "cron", day_of_week="sun", hour=3, minute=0, id="weekly-backup")
+
+    age = newest_backup_age_days()
+    if age is None or age >= BACKUP_INTERVAL_DAYS:
+        # Saat dilimi bilinçli olmalı: zamanlayıcı Europe/Istanbul'da çalışıyor
+        # ama container UTC, naive bir tarih 3 saat geçmişe düşüp işi tam
+        # açılışta tetikliyordu.
+        due_at = datetime.now(timezone.utc) + timedelta(seconds=CATCH_UP_DELAY_SECONDS)
+        scheduler.add_job(create_backup, "date", run_date=due_at, id="catch-up-backup")
+        logger.warning(
+            "Gecikmiş yedek tespit edildi (en yeni yedek: %s), %s içinde bir kere alınacak",
+            "yok" if age is None else f"{age:.1f} gün önce",
+            f"{CATCH_UP_DELAY_SECONDS} sn",
+        )
+
     scheduler.start()
-    logger.info("Yedekleme zamanlayıcısı başlatıldı (haftada bir çalışır)")
+    logger.info("Yedekleme zamanlayıcısı başlatıldı (her pazar 03:00)")
     return scheduler

@@ -233,6 +233,19 @@ geçer) + `evobulut_sync._download_pdf` (o PDF'ler watchdog'un görmediği
 `evobulut/` alt klasörüne indiği için ingest'ten geçmez). Birikmişler için
 `POST /invoices/compress-existing`.
 
+**Haftalık yedek sabit saatte alınır, açılışta gecikme telafi edilir.**
+Eskiden `interval, weeks=1` kullanılıyordu; bu, ilk çalışmayı açılıştan bir
+hafta *sonraya* koyuyor ve Railway her deploy'da süreci yeniden başlattığı
+için sayaç sürekli sıfırlanıyordu. Haftada birden sık deploy edildiğinde
+yedek **hiç alınmıyordu** — canlıda görüldü (17.08.2026: `size-report` →
+`yerel_yedek_sayisi: 0`; dış depo kurulmuştu ama kopyalayacak bir şey yoktu).
+Şimdi her pazar 03:00 cron'u var, ayrıca açılışta diskteki en yeni yedeğe
+bakılıp 7 günden eskiyse iki dakika sonrasına tek seferlik telafi işi
+konuyor. Ölçü bellekteki sayaç değil **diskteki dosya** olduğu için süreç kaç
+kez yeniden başlarsa başlasın fazladan yedek alınmaz. Telafi tarihi
+**saat dilimi bilinçli** üretilmeli: zamanlayıcı Europe/Istanbul'da, container
+UTC; naive tarih üç saat geçmişe düşüp işi tam açılış anında tetikliyordu.
+
 **Yedekte kazanılan yer katlanarak sayılır**: her .zip *tüm* yüklenen
 dosyaları içeriyor ve yerelde `BACKUP_KEEP_COUNT` (8), dış depoda
 `BACKUP_S3_KEEP_COUNT` (12) kopya tutuluyor — yani tek dosyada kazanılan

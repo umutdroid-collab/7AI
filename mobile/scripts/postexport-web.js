@@ -33,6 +33,31 @@ for (const file of ["icon-192.png", "icon-512.png", "apple-touch-icon.png"]) {
 // yayın klasöründen okunduğu için her iki yolda da geçerli olur.
 fs.writeFileSync(path.join(OUT_DIR, "_redirects"), "/*    /index.html   200\n");
 
+// Önbellek ve güvenlik başlıkları. _headers dosyası hem Netlify hem Cloudflare
+// Pages tarafından okunuyor; netlify.toml gibi tek platforma bağlı değil.
+//
+// _expo/static ve assets altındaki dosya adları içerik özetini taşıyor (içerik
+// değişince ad da değişir), bu yüzden uzun süreli önbellek güvenli - saha ekibi
+// mobil veride çalıştığı için bu her açılışta yeniden indirmeyi engelliyor.
+// index.html bilerek dışarıda: her zaman taze gelmeli, yoksa yeni yayın
+// kullanıcıya ulaşmaz.
+fs.writeFileSync(
+  path.join(OUT_DIR, "_headers"),
+  [
+    "/_expo/static/*",
+    "  Cache-Control: public, max-age=31536000, immutable",
+    "",
+    "/assets/*",
+    "  Cache-Control: public, max-age=31536000, immutable",
+    "",
+    "/*",
+    "  X-Content-Type-Options: nosniff",
+    "  Referrer-Policy: strict-origin-when-cross-origin",
+    "  X-Frame-Options: SAMEORIGIN",
+    "",
+  ].join("\n")
+);
+
 const indexPath = path.join(OUT_DIR, "index.html");
 let html = fs.readFileSync(indexPath, "utf8");
 

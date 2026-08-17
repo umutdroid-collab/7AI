@@ -29,7 +29,12 @@ mobile/     Expo (React Native) — hem native hem web (PWA) → Netlify
 ```
 
 - Backend: `https://7ai-production.up.railway.app`
-- Web/PWA: `https://saha.7medikal.com` (Netlify; `7medai.netlify.app` da çalışır)
+- Web/PWA: `https://saha.7medikal.com` (Netlify'dan **Cloudflare Pages**'e
+  taşınıyor — sebep: Netlify ücretsiz planında krediler bitince *production
+  deploy'lar tamamen duruyor*, elle yükleme dahil. İki kez yaşandı ve iş
+  durdu. Cloudflare Pages ayarları: kök dizin `mobile`, komut
+  `npm run build:web`, çıktı `dist`, watch path `mobile/*`. Netlify sitesi geri
+  dönüş için bir süre ayakta bırakılmalı.)
 - Depo: `umutdroid-collab/7AI`, geliştirme dalı
   `claude/mobile-app-inventory-invoice-qa-yzmx0q`
 
@@ -173,6 +178,14 @@ Keychain/Keystore, **web'de localStorage** — yani tarayıcıda düz metin duru
 aynı kaynaktaki her betik okuyabilir. Bu yüzden kutu varsayılan olarak kapalı,
 kayıt yalnızca başarılı girişten sonra yapılıyor ve işaret kaldırıldığı anda
 saklananlar siliniyor.
+
+**Yönlendirme ve başlıklar `netlify.toml`'da değil, derleme çıktısında.**
+`postexport-web.js` her derlemede `dist/_redirects` (SPA catch-all) ve
+`dist/_headers` (içerik özetli dosyalara uzun önbellek, `index.html`'e
+bilerek yok) üretir. Sebep: `netlify.toml` yalnızca Netlify kendi derlemesini
+yaparken okunuyor; hazır çıktı elle yüklendiğinde ya da başka bir platforma
+geçildiğinde devre dışı kalıyordu. `_redirects`/`_headers` ikisi de Netlify ve
+Cloudflare Pages tarafından okunuyor. Node sürümü `mobile/.nvmrc` ile sabit.
 
 **Check-in fotoğrafları sunucuda küçültülür** (`services/images.py`), istemcide
 değil: eski uygulama sürümleri, farklı tarayıcılar ve doğrudan API'ye yapılan

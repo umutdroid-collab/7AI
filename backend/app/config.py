@@ -32,6 +32,17 @@ class Settings(BaseSettings):
     backup_dir: str = "./data/backups"
     backup_keep_count: int = 8
 
+    # Dış depo kopyası (S3 uyumlu). Railway diski tek kopya olmasın diye:
+    # disk bozulur ya da servis silinirse yerel yedekler de gider.
+    # Ayarlar sağlayıcıdan bağımsız - Cloudflare R2, Backblaze B2, AWS S3 ve
+    # benzerleri aynı alanlarla çalışır, yalnızca endpoint değişir.
+    backup_s3_endpoint: str = ""  # örn. https://<hesap-id>.r2.cloudflarestorage.com
+    backup_s3_bucket: str = ""
+    backup_s3_access_key: str = ""
+    backup_s3_secret_key: str = ""
+    backup_s3_region: str = "auto"  # R2 "auto" ister; AWS'te bölge adı
+    backup_s3_keep_count: int = 12
+
     qwen_base_url: str = "http://localhost:11434/v1"
     qwen_api_key: str = "ollama"
     qwen_model: str = "qwen2.5:14b-instruct"

@@ -82,6 +82,13 @@ def create_backup() -> str:
 
     logger.info("Yedek oluşturuldu: %s", dest)
     _prune_old_backups()
+
+    # Dış depo kopyası: yapılandırılmamışsa sessizce atlanır, yükleme
+    # başarısız olursa da yerel yedek geçerli sayılır (upload hata yükseltmez).
+    from app.services import offsite_backup
+
+    offsite_backup.upload(str(dest))
+
     return filename
 
 

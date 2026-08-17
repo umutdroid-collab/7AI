@@ -79,6 +79,15 @@ ulaştı. Gönderen `7medikal.com` alt alan adı Resend'de doğrulanmış durumd
 saklanır. SQLite, dosyayı kopyalayarak değil kendi backup API'siyle
 alınıyor — yazma anına denk gelen bozuk yedeği önlemek için.
 
+**Yedeğin ikinci kopyası dış depoda** (`services/offsite_backup.py`): yalnızca
+Railway diskinde duran yedek, diskin ya da servisin gittiği senaryoda —yani
+yedeğin asıl gerekli olduğu anda— işe yaramaz. Her yedek oluşturulduktan sonra
+S3 uyumlu bir depoya kopyalanır ve son `BACKUP_S3_KEEP_COUNT` kopya bırakılır.
+Sağlayıcıdan bağımsız (R2/B2/S3 aynı alanlarla çalışır, endpoint değişir).
+Yapılandırılmamışsa sessizce atlanır; **yükleme başarısız olursa hata
+yükseltilmez** — dış kopya alınamadı diye yerel yedeklemeyi başarısız saymak
+yanlış olurdu. Gerçek hatayı görmek için `GET /backups/offsite/status`.
+
 **Yedek geri yükleme vektör dizinini diskte değiştirir.** Chroma istemcileri
 süreç içinde yola göre önbelleğe aldığı için `vector_store.reset_client()`
 hem kendi değişkenlerini hem `SharedSystemClient.clear_system_cache()`
@@ -256,6 +265,7 @@ Tam liste ve açıklamalar: `backend/.env.example`. Kritik olanlar:
 | `QWEN_BASE_URL/API_KEY/MODEL` | Alibaba Model Studio (token başına ücretli) |
 | `QWEN_MAX_TOKENS` (900), `QWEN_TIMEOUT_SECONDS` (60), `QWEN_DISABLE_THINKING` (false) | Asistan hızının ayarla çevrilen kolları |
 | `CORS_ORIGINS` | `https://saha.7medikal.com` ile daraltıldı |
+| `BACKUP_S3_ENDPOINT/BUCKET/ACCESS_KEY/SECRET_KEY` | Yedeklerin dış depo kopyası; boşsa yedek yalnızca Railway diskinde kalır |
 
 ## Teşhis uçları (hepsi admin)
 
@@ -270,14 +280,14 @@ normal akışta hatalar sessizce yutulur:
 - `POST /invoices/evobulut-sync` (senkronizasyonu elle tetikler)
 - `POST /checkins/compress-existing` (eski fotoğrafları toplu küçültür, kaç MB
   kazanıldığını döner)
+- `GET /backups/offsite/status` (dış depoya erişimi sınar), `GET /backups/offsite`
+  (uzaktaki kopyalar), `POST /backups/{dosya}/offsite-upload` (elle gönderir)
 
 ## Açık işler
 
 - Eski `SMTP_HOST/USERNAME/PASSWORD` değişkenleri Railway'de duruyorsa
   silinmeli: Resend anahtarı varken kullanılmıyorlar ama anahtar bir gün
   kaldırılırsa sistem sessizce Railway'de çalışmayan SMTP yoluna düşer.
-- Yedeklerin dış depoya (örn. Cloudflare R2) otomatik kopyalanması — şu an
-  yedekler yalnızca Railway diskinde.
 - Asistanın EvoBulut'a canlı sorgu sorabilmesi ("bu ay ne kadar fatura
   kestik").
 - Yönetici panosu (grafikler/özetler).

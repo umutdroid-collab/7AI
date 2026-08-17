@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import require_admin
-from app.services import audit
+from app.services import audit, offsite_backup
 from app.models import User
 from app.services.backup import backup_path, create_backup, list_backups, restore_backup
 
@@ -20,6 +20,34 @@ def get_backups(_: User = Depends(require_admin)):
 def run_backup(_: User = Depends(require_admin)):
     filename = create_backup()
     return {"ok": True, "filename": filename}
+
+
+@router.get("/offsite/status")
+def offsite_status(_: User = Depends(require_admin)):
+    """Dış depo bağlantısını sınar ve gerçek hatayı döner - normal akışta
+    yükleme hataları yutuluyor, buradan görünür."""
+    return offsite_backup.status()
+
+
+@router.get("/offsite")
+def offsite_list(_: User = Depends(require_admin)):
+    """Dış depodaki kopyalar. Yerel liste kaybolduğunda elde ne olduğunu
+    görmenin tek yolu."""
+    try:
+        return offsite_backup.list_remote()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Dış depoya erişilemedi: {e}")
+
+
+@router.post("/{filename}/offsite-upload")
+def upload_existing_to_offsite(filename: str, _: User = Depends(require_admin)):
+    """Mevcut bir yerel yedeği elle dış depoya kopyalar - dış depo sonradan
+    yapılandırıldığında birikmiş yedekleri göndermek için."""
+    try:
+        path = backup_path(filename)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Yedek bulunamadı")
+    return offsite_backup.upload(str(path))
 
 
 @router.get("/{filename}/download")

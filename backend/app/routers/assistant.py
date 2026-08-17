@@ -12,9 +12,10 @@ from app.schemas import ChatRequest, ChatResponse, ClinicalDocumentOut
 import logging
 
 from app.services import audit
+from app.services.pdf_compress import compress_pdf
 from app.services.pubmed import _raw_search as pubmed_raw_search
 from app.services.rag import answer_question
-from app.services.vector_store import index_pdf, reindex_all, remove_document
+from app.services.vector_store import index_pdf, reindex_all, remove_document, vacuum_index
 from app.utils import safe_pdf_filename, unique_destination
 
 logger = logging.getLogger("assistant")
@@ -38,6 +39,53 @@ def list_documents(db: Session = Depends(get_db), _: User = Depends(get_current_
 def reindex(_: User = Depends(require_admin)):
     total_chunks = reindex_all()
     return {"ok": True, "total_chunks": total_chunks}
+
+
+@router.post("/vacuum-index")
+def vacuum_vector_index(_: User = Depends(require_admin)):
+    """Vektör veritabanındaki boş sayfaları geri verir (VACUUM).
+
+    Yerel ölçümde kazanç ~%14; dosyanın büyük kısmı parça metinleri ve tam
+    metin arama indeksi, yani silinemeyen gerçek veri. Asistan işlem
+    sırasında kısa süre kilitlenir, sonrasında normal çalışır.
+    """
+    return vacuum_index()
+
+
+@router.post("/documents/compress-existing")
+def compress_existing_documents(db: Session = Depends(get_db), _: User = Depends(require_admin)):
+    """Birikmiş klinik çalışma PDF'lerini küçültür.
+
+    Dergi makaleleri şekil/tablo görüntüleriyle dolu ve klasör canlıda
+    50.95 MB ölçüldü. Küçültme metni değiştirmediği için parçalar geçerli
+    kalır ve yeniden indeksleme gerekmez - ama kayıttaki dosya boyutu
+    güncellenmeli, yoksa `_already_indexed` dosyayı değişmiş sanıp her
+    açılışta tüm külliyatı yeniden gömer.
+    """
+    folder = settings.clinical_docs_folder
+    total_before = total_after = processed = seen = 0
+
+    for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+        if not name.lower().endswith(".pdf"):
+            continue
+        seen += 1
+        result = compress_pdf(os.path.join(folder, name))
+        total_before += result["before"]
+        total_after += result["after"]
+        if result["compressed"]:
+            processed += 1
+            doc = db.query(ClinicalDocument).filter(ClinicalDocument.filename == name).first()
+            if doc:
+                doc.file_size = result["after"]
+
+    db.commit()
+    return {
+        "taranan_pdf": seen,
+        "islenen_pdf": processed,
+        "onceki_toplam_mb": round(total_before / 1024 / 1024, 2),
+        "sonraki_toplam_mb": round(total_after / 1024 / 1024, 2),
+        "kazanilan_mb": round((total_before - total_after) / 1024 / 1024, 2),
+    }
 
 
 @router.get("/pubmed-diagnostics")
@@ -116,6 +164,9 @@ async def _save_and_index(file: UploadFile, db: Session) -> ClinicalDocument:
                 raise HTTPException(status_code=400, detail=f"'{file.filename}': dosya çok büyük (maksimum 30 MB)")
             out.write(chunk)
 
+    # İndekslemeden ÖNCE: `_already_indexed` dosya boyutunu değişiklik işareti
+    # sayıyor, sonra küçültülürse her açılışta külliyat yeniden gömülürdü.
+    compress_pdf(dest_path)
     index_pdf(Path(dest_path))
 
     doc = db.query(ClinicalDocument).filter(ClinicalDocument.filename == os.path.basename(dest_path)).first()

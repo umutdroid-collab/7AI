@@ -150,7 +150,7 @@ def compress_existing_invoice_pdfs(_: User = Depends(require_admin)):
             if not name.lower().endswith(".pdf"):
                 continue
             seen += 1
-            result = pdf_compress.compress_invoice_pdf(os.path.join(root, name))
+            result = pdf_compress.compress_pdf(os.path.join(root, name))
             total_before += result["before"]
             total_after += result["after"]
             processed += result["compressed"]

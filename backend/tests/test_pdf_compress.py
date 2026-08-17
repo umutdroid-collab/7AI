@@ -44,7 +44,7 @@ def test_scanned_invoice_shrinks_a_lot(tmp_path):
     path = tmp_path / "tarama.pdf"
     _scanned_pdf(path, tmp_path)
 
-    result = pdf_compress.compress_invoice_pdf(str(path))
+    result = pdf_compress.compress_pdf(str(path))
 
     assert result["compressed"] is True
     # Ölçülen kazanç ~4 kat; yarıya inmesini şart koşmak biçim değişikliklerine
@@ -55,7 +55,7 @@ def test_scanned_invoice_shrinks_a_lot(tmp_path):
 def test_embedded_image_is_downsampled_to_jpeg(tmp_path):
     path = tmp_path / "tarama.pdf"
     _scanned_pdf(path, tmp_path)
-    pdf_compress.compress_invoice_pdf(str(path))
+    pdf_compress.compress_pdf(str(path))
 
     with pikepdf.open(str(path)) as pdf:
         images = list(pdf.pages[0].get_images().values())
@@ -70,7 +70,7 @@ def test_text_is_still_extractable_after_compression(tmp_path):
     NEEDS_REVIEW'a düşer."""
     path = tmp_path / "efatura.pdf"
     _text_pdf(path)
-    pdf_compress.compress_invoice_pdf(str(path))
+    pdf_compress.compress_pdf(str(path))
 
     with pdfplumber.open(str(path)) as pdf:
         text = pdf.pages[0].extract_text() or ""
@@ -83,11 +83,11 @@ def test_second_pass_leaves_the_file_alone(tmp_path):
     kazanç için dosya yeniden yazılmamalı."""
     path = tmp_path / "tarama.pdf"
     _scanned_pdf(path, tmp_path)
-    pdf_compress.compress_invoice_pdf(str(path))
+    pdf_compress.compress_pdf(str(path))
 
     size_after_first = os.path.getsize(path)
     mtime = os.path.getmtime(path)
-    result = pdf_compress.compress_invoice_pdf(str(path))
+    result = pdf_compress.compress_pdf(str(path))
 
     assert result["compressed"] is False
     assert os.path.getsize(path) == size_after_first
@@ -99,7 +99,7 @@ def test_broken_pdf_is_left_untouched(tmp_path):
     path = tmp_path / "bozuk.pdf"
     path.write_bytes(b"%PDF-1.4 bu bir PDF degil")
 
-    result = pdf_compress.compress_invoice_pdf(str(path))
+    result = pdf_compress.compress_pdf(str(path))
 
     assert result["compressed"] is False
     assert path.read_bytes() == b"%PDF-1.4 bu bir PDF degil"

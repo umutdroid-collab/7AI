@@ -16,7 +16,7 @@ from app.services.evobulut import (
     fetch_all_sales_invoices,
     fetch_invoice_pdf_url,
 )
-from app.services.pdf_compress import compress_invoice_pdf
+from app.services.pdf_compress import compress_pdf
 from app.utils import unique_destination
 
 logger = logging.getLogger("evobulut_sync")
@@ -87,7 +87,7 @@ def _download_pdf(evobulut_id: str, dest_folder: str) -> tuple[str, str] | None:
             f.write(content)
         # Bu PDF'ler watchdog'un görmediği alt klasöre iniyor, yani
         # ingest_pdf'ten geçmiyorlar; küçültme burada ayrıca çağrılmalı.
-        compress_invoice_pdf(dest_path)
+        compress_pdf(dest_path)
         return dest_path, os.path.basename(dest_path)
     except Exception:
         logger.exception("EvoBulut fatura %s için PDF indirilemedi", evobulut_id)

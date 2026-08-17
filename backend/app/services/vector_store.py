@@ -144,6 +144,66 @@ def remove_document(filename: str) -> None:
     get_collection().delete(where={"filename": filename})
 
 
+def vacuum_index() -> dict:
+    """Vektör veritabanındaki boş sayfaları geri verir.
+
+    Chroma'nın `chroma utils vacuum` komutuyla aynı üç adım: yazma günlüğünü
+    (`embeddings_queue`) buda, VACUUM ile boşalan sayfaları geri ver,
+    `automatically_purge` ayarını açık bırak.
+
+    **Beklentiyi doğru kurun.** Ölçüldü (yerel, 6000 parça): 28.1 MB → 24.1 MB,
+    yani ~%14. Günlük budama genelde hiçbir şey kazandırmaz çünkü Chroma
+    0.5.15 sıfırdan kurulan sistemlerde `automatically_purge`'ü zaten açık
+    başlatıyor; kazanç neredeyse tamamen VACUUM'un serbest sayfaları geri
+    vermesinden gelir. Dosyanın asıl içeriği budanabilir bir günlük değil,
+    parça metinleri ve tam metin arama indeksi (aynı yerel ölçümde 28.1 MB'ın
+    23'ü): `embedding_metadata`, `embedding_fulltext_search_*`. Bunlar gerçek
+    veri, silinemez — vektör indeksini küçültmek isteyen onu yedekten
+    çıkarmayı düşünmeli (klinik PDF'lerden yeniden üretilebiliyor).
+
+    VACUUM tüm veritabanını kilitlediği için önce kendi istemcimiz bırakılır.
+    """
+    from chromadb.config import Settings as ChromaSettings, System
+    from chromadb.api.client import Client as ChromaClient
+    from chromadb.db.impl.sqlite import SqliteDB
+    from chromadb.ingest.impl.utils import trigger_vector_segments_max_seq_id_migration
+    from chromadb.segment import SegmentManager
+
+    path = Path(settings.vector_db_dir)
+    before = sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+
+    # Açık istemci VACUUM'un ihtiyaç duyduğu tekil kilidi engeller.
+    reset_client()
+
+    system = System(ChromaSettings(is_persistent=True, persist_directory=str(path)))
+    system.start()
+    try:
+        client = ChromaClient.from_system(system)
+        sqlite = system.instance(SqliteDB)
+        # Segmentlerin max_seq_id'si eski kurulumlarda dosyada duruyor; WAL'ın
+        # nereye kadar güvenle silinebileceği ondan okunuyor.
+        trigger_vector_segments_max_seq_id_migration(sqlite, system.instance(SegmentManager))
+        for collection in client.list_collections():
+            sqlite.purge_log(collection_id=collection.id)
+        sqlite.vacuum()
+        config = sqlite.config
+        config.set_parameter("automatically_purge", True)
+        sqlite.set_config(config)
+    finally:
+        system.stop()
+        # Uygulamanın istemcisi bir sonraki soruda temiz bir sistemle kurulsun.
+        reset_client()
+
+    after = sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+    logger.info("Vektör indeksi budandı: %.1f MB -> %.1f MB", before / 1024 / 1024, after / 1024 / 1024)
+    return {
+        "onceki_mb": round(before / 1024 / 1024, 2),
+        "sonraki_mb": round(after / 1024 / 1024, 2),
+        "kazanilan_mb": round((before - after) / 1024 / 1024, 2),
+        "surekli_budama_acildi": True,
+    }
+
+
 def reset_client() -> None:
     """Bellekteki Chroma istemcisini serbest bırakır.
 

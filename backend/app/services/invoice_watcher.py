@@ -10,7 +10,7 @@ from app.config import get_settings
 from app.database import SessionLocal
 from app.models import Invoice, InvoiceStatus
 from app.services.invoice_parser import parse_invoice_pdf
-from app.services.pdf_compress import compress_invoice_pdf
+from app.services.pdf_compress import compress_pdf
 
 logger = logging.getLogger("invoice_watcher")
 settings = get_settings()
@@ -30,7 +30,7 @@ def ingest_pdf(pdf_path: str) -> None:
         # başına birkaç MB tutuyor ve her haftalık yedeğe olduğu gibi giriyor.
         # Yükleme, toplu yükleme ve `rescan` yollarının hepsi buradan geçtiği
         # için tek bağlama noktası yeterli.
-        compress_invoice_pdf(pdf_path)
+        compress_pdf(pdf_path)
 
         if existing:
             invoice = existing

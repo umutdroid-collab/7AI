@@ -1,4 +1,4 @@
-"""Fatura PDF'lerini sunucuda küçültür.
+"""Yüklenen PDF'leri sunucuda küçültür (faturalar + klinik çalışmalar).
 
 Check-in fotoğraflarıyla aynı gerekçe: Railway diski küçük ve her haftalık
 yedek **tüm** yüklenen dosyaları içeriyor, yani bir fatura PDF'i yerelde 8,
@@ -13,13 +13,19 @@ Ama fotoğraftan farklı olarak PDF'te kazanç garanti değil:
   akışlarının deflate'lenmesi) ve genelde küçüktür.
 - **Taranmış fatura** (elle klasöre bırakılanlar) sayfa başına birkaç MB'lık
   görüntü taşır; asıl kazanç oradadır.
+- **Klinik çalışma PDF'leri** (dergi makaleleri) şekil ve tablo görüntüleriyle
+  dolu; canlıda tek bir makale 16.5 MB ölçüldü. Fatura klasörünün tamamından
+  (11.9 MB) büyük, yani buradaki kazanç faturalardakinden fazla.
 
 Bu yüzden küçültme koşulludur: sonuç en az %10 küçük değilse dosya olduğu
 gibi bırakılır. Aksi halde her `rescan` çağrısında PDF'ler boşuna yeniden
 yazılır ve zaten optimum olan dosyalar bozulma riskine sokulurdu.
 
-Metin çıkarımı (`invoice_parser`) görüntülerden etkilenmez; sıkıştırma
-okunan fatura alanlarını değiştirmez.
+Metin çıkarımı görüntülerden etkilenmez; ne okunan fatura alanları ne de
+klinik dokümanların vektör parçaları değişir. Yine de klinik tarafta sıra
+önemli: `vector_store._already_indexed` dosya boyutunu değişiklik işareti
+sayıyor, bu yüzden küçültme **indekslemeden önce** yapılmalı - sonra
+yapılırsa her açılışta tüm külliyat yeniden gömülür.
 """
 
 import io
@@ -97,7 +103,7 @@ def _recompress_image(stream) -> bool:
     return True
 
 
-def compress_invoice_pdf(path: str) -> dict:
+def compress_pdf(path: str) -> dict:
     """PDF'i yerinde küçültür. Kazanç eşiğin altındaysa dosyaya dokunmaz.
 
     Hata yükseltmez: faturanın kendisi (ve okunan alanları) PDF küçültülemedi

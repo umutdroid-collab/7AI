@@ -263,6 +263,20 @@ kez yeniden başlarsa başlasın fazladan yedek alınmaz. Telafi tarihi
 **saat dilimi bilinçli** üretilmeli: zamanlayıcı Europe/Istanbul'da, container
 UTC; naive tarih üç saat geçmişe düşüp işi tam açılış anında tetikliyordu.
 
+**Vektör indeksi yedeğin en büyük kalemi ve sıkıştırılamıyor.** Canlı ölçüm
+(17.08.2026): 205 MB'lık verinin 127.51'i `vectorstore`, bunun 92.82'si
+`chroma.sqlite3`, 33.63'ü HNSW `data_level0.bin`. İlk hipotez "Chroma'nın
+budanmayan yazma günlüğü" idi ve **yanlış çıktı**: `embeddings_queue` boş,
+çünkü 0.5.15 sıfırdan kurulan sistemlerde `automatically_purge`'ü zaten açık
+başlatıyor. Tablo kırılımı (yerel, 6000 parça) yeri kimin kapladığını
+gösteriyor: 28.1 MB'ın 23'ü `embedding_metadata` + `embedding_fulltext_search_*`,
+yani parça metinleri ve hiç kullanmadığımız tam metin arama indeksi. Bunlar
+gerçek veri; `POST /assistant/vacuum-index` yalnızca boş sayfaları geri verir
+(~%14). Vektör indeksini küçültmenin tek gerçek yolu **onu yedeğe hiç
+koymamak** — klinik PDF'lerden yeniden üretilebiliyor. Yapılırsa geri yükleme
+`reindex_all(force=True)` çağırmak zorunda: normal `reindex_all()` veritabanı
+kaydına bakıp "zaten indeksli" diyerek atlar ve asistan sessizce boş kalır.
+
 **Yedekte kazanılan yer katlanarak sayılır**: her .zip *tüm* yüklenen
 dosyaları içeriyor ve yerelde `BACKUP_KEEP_COUNT` (8), dış depoda
 `BACKUP_S3_KEEP_COUNT` (12) kopya tutuluyor — yani tek dosyada kazanılan
@@ -334,6 +348,10 @@ normal akışta hatalar sessizce yutulur:
 - `POST /invoices/evobulut-sync` (senkronizasyonu elle tetikler)
 - `POST /checkins/compress-existing` (eski fotoğrafları toplu küçültür, kaç MB
   kazanıldığını döner)
+- `POST /assistant/vacuum-index` (vektör veritabanında VACUUM; kazanç ~%14)
+- `POST /assistant/documents/compress-existing` (klinik PDF'leri küçültür ve
+  kayıttaki boyutu günceller — güncellenmezse `_already_indexed` dosyayı
+  değişmiş sanıp her açılışta tüm külliyatı yeniden gömer)
 - `POST /invoices/compress-existing` (birikmiş fatura PDF'lerini küçültür;
   `taranan_pdf` > `islenen_pdf` normaldir — metin tabanlı e-faturalarda kazanç
   eşiğin altında kalır ve dosyaya dokunulmaz)

@@ -83,3 +83,47 @@ html = html.replace("</head>", extraHead);
 fs.writeFileSync(indexPath, html);
 
 console.log("PWA dosyaları eklendi:", OUT_DIR);
+
+// --- İkon fontlarını temiz bir yola taşı ---
+//
+// @expo/vector-icons TTF'leri çıktıya "assets/node_modules/@expo/vector-icons/
+// .../Fonts/Feather.<hash>.ttf" gibi bir yola koyuyor. Yol içinde node_modules
+// geçtiği için bazı barındırma platformları bu dosyaları yayına hiç almıyor;
+// font 404 olunca tarayıcı ikonların yerine boş kutu (tofu) çiziyor.
+//
+// Çözüm: fontları /fonts altına kopyalayıp @font-face'i doğrudan index.html'e
+// yazmak. İkon bileşenleri zaten fontFamily: "Feather" ile çiziyor, CSS'ten
+// tanımlanan yüz onları karşılıyor - expo-font'un ürettiği varlık yoluna hiç
+// ihtiyaç kalmıyor ve sonuç her platformda aynı.
+function collectIconFonts(dir, found = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) collectIconFonts(full, found);
+    else if (entry.name.endsWith(".ttf")) found.push(full);
+  }
+  return found;
+}
+
+const assetsDir = path.join(OUT_DIR, "assets");
+if (fs.existsSync(assetsDir)) {
+  const fontsOut = path.join(OUT_DIR, "fonts");
+  fs.mkdirSync(fontsOut, { recursive: true });
+
+  const faces = [];
+  for (const source of collectIconFonts(assetsDir)) {
+    // "Feather.ca4b48e0....ttf" -> "Feather"
+    const family = path.basename(source).split(".")[0];
+    fs.copyFileSync(source, path.join(fontsOut, `${family}.ttf`));
+    faces.push(
+      `@font-face{font-family:"${family}";src:url("/fonts/${family}.ttf") format("truetype");font-display:block}`
+    );
+  }
+
+  if (faces.length) {
+    const withFonts = fs
+      .readFileSync(indexPath, "utf8")
+      .replace("</head>", `<style>${faces.join("")}</style>\n</head>`);
+    fs.writeFileSync(indexPath, withFonts);
+    console.log(`İkon fontları /fonts altına alındı: ${faces.length} aile`);
+  }
+}

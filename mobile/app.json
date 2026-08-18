@@ -56,7 +56,7 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "https://7ai-production.up.railway.app"
+      "apiBaseUrl": "https://api.7medikal.com"
     }
   }
 }

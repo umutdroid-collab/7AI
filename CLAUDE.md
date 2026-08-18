@@ -28,7 +28,8 @@ backend/    FastAPI + SQLAlchemy + SQLite   → Railway'de barındırılıyor
 mobile/     Expo (React Native) — hem native hem web (PWA) → Netlify
 ```
 
-- Backend: `https://7ai-production.up.railway.app`
+- Backend: `https://api.7medikal.com` (Railway custom domain; Railway'in kendi
+  `*.up.railway.app` adresi de çalışmaya devam eder — geri dönüş yolu)
 - Web/PWA: `https://saha.7medikal.com` (Netlify'dan **Cloudflare Pages**'e
   taşınıyor — sebep: Netlify ücretsiz planında krediler bitince *production
   deploy'lar tamamen duruyor*, elle yükleme dahil. İki kez yaşandı ve iş
@@ -214,6 +215,15 @@ aynı kaynaktaki her betik okuyabilir. Bu yüzden kutu varsayılan olarak kapal�
 kayıt yalnızca başarılı girişten sonra yapılıyor ve işaret kaldırıldığı anda
 saklananlar siliniyor.
 
+**`app.json` değişikliği yerelde derlerken önbellekten atlanabilir.**
+`expo.extra.apiBaseUrl` derleme anında bundle'ın içine gömülüyor; Metro
+önbelleği duruyorsa `npm run build:web` aynı bundle'ı (aynı hash'le) yeniden
+üretir ve değişiklik çıktıya girmez — "değiştirdim ama olmadı" böyle olur.
+Yerelde doğrularken `rm -rf dist .expo node_modules/.cache` ile derleyin ve
+çıktıdaki adresi `grep apiBaseUrl dist/_expo/static/js/web/*.js` ile
+gerçekten görün. Cloudflare Pages her seferinde temiz klondan derlediği için
+orada bu sorun yok.
+
 **Yönlendirme ve başlıklar `netlify.toml`'da değil, derleme çıktısında.**
 `postexport-web.js` her derlemede `dist/_redirects` (SPA catch-all) ve
 `dist/_headers` (içerik özetli dosyalara uzun önbellek, `index.html`'e
@@ -380,6 +390,3 @@ normal akışta hatalar sessizce yutulur:
 - Asistanın EvoBulut'a canlı sorgu sorabilmesi ("bu ay ne kadar fatura
   kestik").
 - Yönetici panosu (grafikler/özetler).
-- `api.7medikal.com` gibi kendi alan adı — operatörler `*.railway.app` gibi
-  paylaşımlı adresleri filtreleyebiliyor (Netlify'da bu sorun yaşandı, kendi
-  alan adına geçilerek çözüldü).

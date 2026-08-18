@@ -42,9 +42,18 @@ Yedek .zip'i **kodu içermez**. Kodun yedeği git'tir; ikisini karıştırmayın
 5. **Variables** sekmesine bölüm 3'teki değişkenleri girin.
 6. **Settings** → **Networking** → **Generate Domain**.
    `https://<ad>.up.railway.app/docs` açılıyorsa backend ayakta.
+7. **Kendi alan adınızı bağlayın** (atlamayın): aynı ekranda **Custom
+   Domain** → `api.7medikal.com`. Railway bir CNAME hedefi (ve bazen bir TXT
+   doğrulama kaydı) verir; bunları DNS'e girin, TTL 300. Durum **Active**
+   olup `https://api.7medikal.com/docs` açıldığında hazırdır.
 
-> Operatörler paylaşımlı alan adlarını (`*.railway.app`) filtreleyebiliyor.
-> Kalıcı kurulumda kendi alt alan adınızı (`api.7medikal.com`) bağlayın.
+> Neden zorunlu sayıyoruz: operatörler paylaşımlı alan adlarını
+> filtreleyebiliyor ve bu projede iki kez yaşandı (Netlify, `*.pages.dev`).
+> Backend filtrelenirse **site açılır ama hiçbir veri gelmez** — teşhisi en
+> zor arıza tipi. Ayrıca barındırıcı değiştirmek tek bir DNS kaydına iner;
+> aksi halde mobil uygulamanın yeniden derlenmesi gerekir.
+> Railway'in kendi `*.up.railway.app` adresi çalışmaya devam eder, geri
+> dönüş yolu olarak durur.
 
 ### 2.2 Web/PWA — Cloudflare Pages
 
@@ -72,8 +81,8 @@ Netlify hem Cloudflare Pages okur. Node sürümü `mobile/.nvmrc` ile sabit.
 ### 2.3 Mobil uygulamanın backend adresi
 
 `mobile/app.json` → `expo.extra.apiBaseUrl`. Şu an
-`https://7ai-production.up.railway.app`. Backend adresi değişirse burayı
-güncelleyip yeniden derleyin.
+`https://api.7medikal.com`. Backend adresi değişirse burayı güncelleyip
+yeniden derleyin — Cloudflare Pages push'ta otomatik derler.
 
 ### 2.4 Dış yedek deposu — Cloudflare R2
 

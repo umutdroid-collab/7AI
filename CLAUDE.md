@@ -190,6 +190,37 @@ check-in fotoğrafının amacını boşa çıkarıyordu. Web'de `WebCameraModal`
 (expo-camera) canlı kameradan kare yakalar; galeriye erişim yolu yok.
 Native'de `launchCameraAsync` zaten sadece kamera.
 
+**Asistan şirket verisi sorularını modele hiç sormadan cevaplıyor**
+(`services/business_qa.py`). "Bu ay ne kadar fatura kestik", "Efferon stokta
+kaç adet var", "hedefler ne durumda" gibi sorular klinik yola girmeden,
+veritabanından deterministik olarak cevaplanıyor. Üç sebep: (1) finansal bir
+rakamı Qwen'e paraflattırmak yuvarlama/uydurma riski demek — yanlış bir sayı
+cevap alamamaktan kötü; (2) kaynak aramanın anlamı yok; (3) cevap anında
+geliyor, klinik yoldaki 8-14 saniye yok.
+
+**Yönlendirme bilinçli olarak muhafazakâr.** Yalnızca GÜÇLÜ iş sinyalleri
+tetikliyor (`fatura`, `ciro`, `vade`, `hedef`, `stokta`, `kaç adet`);
+`ürün` ve `hastane` gibi zayıf kelimeler klinik sorularda da geçiyor
+("Efferon ürünü SOFA skorunu düşürür mü") ve onları kaçırmak asıl özelliği
+bozardı. Şüphede kalınca klinik yola düşülür. Beş gerçek klinik soru bu
+kuralı test olarak koruyor. Yönlendirme kararı teşhiste
+`kaynaklar.is_verisi_konusu` olarak görünür.
+
+**Dönem her cevapta yazılı.** Belirtilmezse "bu ay" varsayılıyor ama bu bir
+tahmin; hangi tarih aralığının kullanıldığı yazılmazsa yönetici kafasındaki
+başka bir aralıkla eşleştirebilir. Türkçe dönem çözümlemesi deterministik
+(`bugün`, `bu hafta`, `geçen ay`, ay adları); ay adı henüz gelmemişse geçen
+yılın aynı ayı kastediliyor sayılıyor.
+
+**Veri EvoBulut'tan değil yerel veritabanından okunuyor.** Faturalar zaten
+saatte bir senkronize ediliyor; canlı API çağrısı saniyeler ekler ve EvoBulut
+erişilemezse cevap hiç gelmez. Son bir saati de görmek gerekirse
+`POST /invoices/evobulut-sync`.
+
+**Pano ve asistan aynı hesap katmanını kullanıyor** (`services/metrics.py`).
+İkisi de aynı soruları soruyor; hesap iki yerde yazılsaydı zamanla ayrışır ve
+aynı soruya iki farklı rakam dönerdi.
+
 **Yönetici panosu Profil ekranının altında, ayrı bir sekme değil**
 (`screens/profile/DashboardScreen`, `GET /dashboard/summary`). Altıncı sekme
 telefonda alt çubuğu sıkıştırıyordu; pano günde bir bakılan bir ekran, sürekli
@@ -404,5 +435,4 @@ normal akışta hatalar sessizce yutulur:
 
 ## Açık işler
 
-- Asistanın EvoBulut'a canlı sorgu sorabilmesi ("bu ay ne kadar fatura
-  kestik").
+- (şimdilik boş)

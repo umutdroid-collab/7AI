@@ -57,8 +57,12 @@ def test_timings_cover_every_stage(client, admin, monkeypatch):
 
     assert was_answered
     assert len(sources) == 2  # bir doküman + bir PubMed kaynağı
+    # is_verisi_tespit_ms her soruda ölçülür: yönlendirme klinik yolun da
+    # önünde duruyor, yavaşlarsa herkesi etkiler (klinik soruda yalnızca
+    # metin taraması, veritabanına gitmez).
     assert {k for k in timings if k.endswith("_ms")} == {
-        "ceviri_ms", "dokuman_arama_ms", "pubmed_ms", "qwen_cevap_ms", "toplam_ms"
+        "is_verisi_tespit_ms", "ceviri_ms", "dokuman_arama_ms", "pubmed_ms",
+        "qwen_cevap_ms", "toplam_ms",
     }
     # Kaynak sayıları, uzaklıklar ve PubMed'e giden İngilizce sorgu da kaydedilmeli.
     assert timings["dokuman_parca_sayisi"] == 1

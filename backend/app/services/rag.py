@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.models import ChatLog
 from app.schemas import SourceOut
+from app.services import business_qa
 from app.services.pubmed import search_pubmed
 from app.services.qwen_client import ask_qwen
 from app.services.vector_store import query_relevant_chunks
@@ -213,6 +214,17 @@ def answer_question(
 def _answer_question(
     db: Session, question: str, user_id: int | None, timings: dict
 ) -> tuple[str, list[SourceOut], bool]:
+    # Şirket verisi soruları ("bu ay ne kadar fatura kestik") klinik yola hiç
+    # girmez: kaynak aramanın anlamı yok ve rakamların modele yazdırılması
+    # yuvarlama/uydurma riski demek. Yönlendirme muhafazakâr - şüphede
+    # kalınırsa klinik yola düşer (bkz. business_qa modül açıklaması).
+    business = _timed(timings, "is_verisi_tespit_ms", lambda: business_qa.detect(db, question))
+    if business is not None:
+        timings["is_verisi_konusu"] = business.topic
+        answer = business_qa.answer(db, business)
+        _log(db, user_id, question, answer, [], was_answered=True)
+        return answer, [], True
+
     chunks, pubmed_results = _gather_sources(question, timings)
 
     if not chunks and not pubmed_results:

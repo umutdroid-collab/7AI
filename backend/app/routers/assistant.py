@@ -125,6 +125,10 @@ def timing_diagnostics(
       (bu ikisi doküman aramasıyla eş zamanlı çalışır)
     - qwen_cevap_ms: asıl cevabı üreten Qwen çağrısı
     - toplam_ms: uçtan uca
+
+    Soru şirket verisi sorusuysa ("bu ay ne kadar fatura kestik") klinik yola
+    hiç girilmez; bu durumda `kaynaklar.is_verisi_konusu` hangi konuya
+    yönlendirildiğini söyler ve model çağrısı hiç yapılmaz.
     """
     diagnostics: dict = {}
     answer, sources, was_answered = answer_question(db, payload.question, user.id, diagnostics)

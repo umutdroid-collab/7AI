@@ -378,6 +378,28 @@ edilmeden eklenir — işlem geri alınırsa günlük de geri alınır. Tek isti
 yedek geri yükleme: veritabanının üzerine yazdığı için kayıt sonradan ayrı
 bir oturumda yazılır. Günlüğe yazamamak asıl işlemi bozmamalı.
 
+**SQLite'ın `lower()`'ı yalnızca ASCII, bu yüzden `ilike` Türkçe'de
+yanlış çalışıyordu.** SQLAlchemy `ilike`'ı `lower(sutun) LIKE lower(?)` olarak
+derliyor ve SQLite "Ü", "İ", "Ş"yi küçültmüyor: "düz" araması yalnızca
+Title-Case yazılmış ürünleri, "DÜZ" araması yalnızca BÜYÜK yazılmışları
+buluyordu (canlıda "ürün araması çalışmıyor" olarak bildirildi). Çözüm tek
+noktada: `database.py` bağlantı açılırken SQLite'ın `lower()` fonksiyonunu
+Türkçe bilen bir sürümle değiştiriyor, böylece `ilike` kullanan tüm aramalar
+(ürün, stok, fatura) tek seferde düzeliyor — SQL'de `lower()` başka hiçbir
+yerde kullanılmıyor, davranış değişikliği aramayla sınırlı. Fonksiyon ayrıca
+diyakritikleri sadeleştiriyor ("duz vaskuler" → "Düz Vasküler"): saha ekibi
+telefondan çoğunlukla Türkçe karakter yazmıyor. Python'un kendi `str.lower()`'ı
+burada YETMEZ — "İ".lower() araya birleşen bir nokta karakteri koyar ve
+"medipol" ile "MEDİPOL" eşleşmez.
+
+**Alt sekme çubuğunun yüksekliğine güvenli alan payı elle eklenir.**
+React Navigation'da `tabBarStyle.height` bir sayıysa o değer TOPLAM yükseklik
+sayılıyor ve alt çentik payı üstüne eklenmiyor (`BottomTabBar.js`: `customHeight`
+varsa inset atlanıyor), ama çubuk yine içeriden `insets.bottom` kadar padding
+uyguluyor. iPhone'da 34px'lik ana ekran çubuğu 64px'lik sekme sırasının
+içinden yiyor ve etiketler alttan kesiliyordu. `useSafeAreaInsets()` ile
+`height: 64 + insets.bottom` veriliyor.
+
 **Stokta SKT ve hedeflerde ürün zorunlu değil.** SKT boş bırakılabilir
 (yazılıp okunamıyorsa hata verilir); SKT'siz kayıtlar listede sona düşer.
 Hedefler ürüne bağlı (ilerleme stok kullanımından otomatik) ya da serbest

@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from "react-native";
 import { NavigationContainer, DarkTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
 import { colors, typography } from "../theme";
 import HeaderProfileButton from "../components/HeaderProfileButton";
@@ -155,6 +156,14 @@ const TABS: { name: string; label: string; icon: IconName; component: React.Comp
 ];
 
 function MainTabs() {
+  // Güvenli alan payını KENDİMİZ eklemek zorundayız. React Navigation'da
+  // tabBarStyle.height bir sayıysa o değer TOPLAM yükseklik sayılır ve alt
+  // çentik payı üstüne EKLENMEZ (BottomTabBar.js: customHeight varsa inset
+  // atlanıyor), ama çubuk yine içeriden insets.bottom kadar padding uygular.
+  // iPhone'da 34px'lik ana ekran çubuğu 64px'in içinden yiyordu ve sekme
+  // etiketleri alttan kesiliyordu - canlıda görüldü.
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -162,11 +171,10 @@ function MainTabs() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          // Tasarımda sekme sırası 64px; güvenli alan payını React Navigation
-          // kendisi ekliyor (iOS çentiği yüzünden sabit yükseklik verilmiyor).
-          height: 64,
+          // Tasarımdaki 64px sekme sırası + cihazın alt güvenli alanı.
+          height: 64 + insets.bottom,
           paddingTop: 8,
-          paddingBottom: 8,
+          paddingBottom: 8 + insets.bottom,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textDim,

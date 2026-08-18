@@ -558,3 +558,57 @@ export async function fetchAuditLogs(entityType?: string) {
   });
   return data;
 }
+
+// --- Yönetici panosu (admin) ---
+//
+// Tek uç: pano açılışında dört ayrı istek atmak mobil veride hem yavaş hem de
+// kısmi yüklenmiş bir ekran demekti.
+
+export interface CurrencyTotal {
+  para_birimi: string;
+  tutar: number;
+  adet: number;
+}
+
+export interface DashboardSummary {
+  tarih: string;
+  faturalar: {
+    bu_ay_kesilen: CurrencyTotal[];
+    vadesi_gecen: CurrencyTotal[];
+    yaklasan_7_gun: CurrencyTotal[];
+    yaklasan_30_gun: CurrencyTotal[];
+    kontrol_gerekli: number;
+  };
+  stok: {
+    depoda: number;
+    hastanelerde_toplam: number;
+    araclarda_toplam: number;
+    hastane_dagilimi: { hastane: string; adet: number }[];
+    arac_dagilimi: { calisan: string; adet: number }[];
+    skt_yaklasan: {
+      urun: string;
+      lot_no: string;
+      skt: string;
+      kalan_gun: number;
+      konum: string;
+    }[];
+  };
+  saha: {
+    son_7_gun_checkin: number;
+    ziyaret_edilen_hastane: number;
+    calisan_dagilimi: { calisan: string; adet: number }[];
+  };
+  hedefler: {
+    baslik: string;
+    calisan: string;
+    hedef: number;
+    ilerleme: number;
+    yuzde: number;
+    kalan_gun: number;
+  }[];
+}
+
+export async function fetchDashboardSummary() {
+  const { data } = await api.get<DashboardSummary>("/dashboard/summary");
+  return data;
+}

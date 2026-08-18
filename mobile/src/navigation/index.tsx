@@ -27,6 +27,7 @@ import BulkUploadScreen from "../screens/profile/BulkUploadScreen";
 import BackupsScreen from "../screens/profile/BackupsScreen";
 import AuditLogScreen from "../screens/profile/AuditLogScreen";
 import FollowUpsScreen from "../screens/profile/FollowUpsScreen";
+import DashboardScreen from "../screens/profile/DashboardScreen";
 import ClinicalDocumentsScreen from "../screens/assistant/ClinicalDocumentsScreen";
 import PersonelTakipScreen from "../screens/targets/PersonelTakipScreen";
 import AddSalesTargetScreen from "../screens/targets/AddSalesTargetScreen";
@@ -65,6 +66,7 @@ function StockStack() {
       <StockStackNav.Screen name="AuditLog" component={AuditLogScreen} options={{ title: "İşlem Günlüğü" }} />
       <StockStackNav.Screen name="ClinicalDocuments" component={ClinicalDocumentsScreen} options={{ title: "Klinik Çalışmalar" }} />
       <StockStackNav.Screen name="FollowUps" component={FollowUpsScreen} options={{ title: "Hatırlatıcılar" }} />
+      <StockStackNav.Screen name="Dashboard" component={DashboardScreen} options={{ title: "Pano" }} />
     </StockStackNav.Navigator>
   );
 }

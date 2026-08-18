@@ -220,6 +220,17 @@ export default function ProfileScreen() {
 
       {user?.role === "admin" && (
         <>
+          <Text style={styles.sectionTitle}>Yönetim</Text>
+          <TouchableOpacity style={styles.bulkUploadCard} onPress={() => navigation.navigate("Dashboard")}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bulkUploadTitle}>Pano</Text>
+              <Text style={styles.bulkUploadSubtitle}>
+                Fatura, stok, saha ve hedef rakamları tek ekranda
+              </Text>
+            </View>
+            <Text style={styles.bulkUploadChevron}>›</Text>
+          </TouchableOpacity>
+
           <Text style={styles.sectionTitle}>Toplu Veri Ekleme</Text>
           <TouchableOpacity style={styles.bulkUploadCard} onPress={() => navigation.navigate("BulkUpload")}>
             <View style={{ flex: 1 }}>

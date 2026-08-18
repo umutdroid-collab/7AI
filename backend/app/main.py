@@ -8,8 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.database import Base, engine
 from app.routers import (
-    assistant, audit_logs, auth, backups, checkins, follow_ups, hospitals, invoices,
-    notifications, products, sales_targets, stock,
+    assistant, audit_logs, auth, backups, checkins, dashboard, follow_ups, hospitals,
+    invoices, notifications, products, sales_targets, stock,
 )
 from app.seed import seed_default_admin
 from app.services.migrations import run_startup_migrations
@@ -96,6 +96,7 @@ app.include_router(assistant.router)
 app.include_router(backups.router)
 app.include_router(audit_logs.router)
 app.include_router(follow_ups.router)
+app.include_router(dashboard.router)
 
 
 @app.get("/")

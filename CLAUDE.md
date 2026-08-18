@@ -190,6 +190,23 @@ check-in fotoğrafının amacını boşa çıkarıyordu. Web'de `WebCameraModal`
 (expo-camera) canlı kameradan kare yakalar; galeriye erişim yolu yok.
 Native'de `launchCameraAsync` zaten sadece kamera.
 
+**Yönetici panosu Profil ekranının altında, ayrı bir sekme değil**
+(`screens/profile/DashboardScreen`, `GET /dashboard/summary`). Altıncı sekme
+telefonda alt çubuğu sıkıştırıyordu; pano günde bir bakılan bir ekran, sürekli
+erişim gerektirmiyor. Rakamların tamamı **tek çağrıda** dönüyor: dört ayrı
+istek mobil veride hem yavaş hem de kısmi yüklenmiş bir ekran demekti.
+
+Panonun asıl riski yanlış rakam göstermesi — yanlış bir sayı, hiç sayı
+göstermemekten kötüdür çünkü karara girer. Bu yüzden üç kural: **para
+birimleri toplanmaz** (faturalar TRY/USD/EUR karışık, tek bir "toplam"
+uydurma bir sayı olurdu — her tutar para birimi bazında ayrı döner),
+**ödenmiş faturalar vade rakamlarına girmez** (fatura listesindeki kuralla
+aynı, ikisi ayrışmasın) ve **satır değil `quantity` toplanır** (bir stok
+satırı birden fazla adet taşıyabiliyor). Hedef ilerlemesi
+`sales_targets._with_progress` ile hesaplanır; kopyalanmaz, çünkü hesap
+ürüne bağlı/manuel ayrımını ve elle düzeltmeyi içeriyor ve iki yerde
+tutulursa zamanla ayrışır.
+
 **Hatırlatıcılar (`follow_ups`) yöneticinin toplantı defteri.** Çalışanın
 check-in yorumunda dikkat çeken bir şey listede aşağı kaydıkça kayboluyordu;
 kart üzerindeki "Takibe Al" o yorumu bağımsız bir kayda dönüştürür. Tarihi
@@ -389,4 +406,3 @@ normal akışta hatalar sessizce yutulur:
 
 - Asistanın EvoBulut'a canlı sorgu sorabilmesi ("bu ay ne kadar fatura
   kestik").
-- Yönetici panosu (grafikler/özetler).

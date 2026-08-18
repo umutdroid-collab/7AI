@@ -377,9 +377,6 @@ normal akışta hatalar sessizce yutulur:
 
 ## Açık işler
 
-- Eski `SMTP_HOST/USERNAME/PASSWORD` değişkenleri Railway'de duruyorsa
-  silinmeli: Resend anahtarı varken kullanılmıyorlar ama anahtar bir gün
-  kaldırılırsa sistem sessizce Railway'de çalışmayan SMTP yoluna düşer.
 - Asistanın EvoBulut'a canlı sorgu sorabilmesi ("bu ay ne kadar fatura
   kestik").
 - Yönetici panosu (grafikler/özetler).

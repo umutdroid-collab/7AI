@@ -4,6 +4,7 @@ import Alert from "../../utils/alert";
 import { useFocusEffect } from "@react-navigation/native";
 import { createStockItem, fetchHospitals, fetchProducts } from "../../api/services";
 import { Hospital, Product } from "../../types";
+import { contentColumn } from "../../components/ui";
 import { colors, spacing } from "../../theme";
 import { apiErrorMessage } from "../../api/client";
 import HospitalPickerModal from "../../components/HospitalPickerModal";
@@ -92,7 +93,13 @@ export default function AddStockScreen({ navigation, route }: any) {
   }
 
   return (
-    <View style={styles.container}>
+    // Düz View değil ScrollView: klavye açıldığında formun alt yarısına
+    // (SKT, miktar, konum) hiç ulaşılamıyordu - canlıda görüldü.
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.label}>Ürün</Text>
       {selectedProduct ? (
         <TouchableOpacity style={styles.selectedProduct} onPress={() => setSelectedProduct(null)}>
@@ -112,7 +119,7 @@ export default function AddStockScreen({ navigation, route }: any) {
               yükseklik alamayıp görünmez olabiliyor (aynı sorun fatura filtre
               çiplerinde de yaşanmıştı). Sonuç sayısı zaten küçük. */}
           {products.length > 0 && (
-            <ScrollView style={styles.productList} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
+            <View style={styles.productList}>
               {products.map((item) => (
                 <TouchableOpacity
                   key={item.id}
@@ -126,7 +133,7 @@ export default function AddStockScreen({ navigation, route }: any) {
                   </Text>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
+            </View>
           )}
 
           {/* Eskiden sonuç yokken ekranda hiçbir şey görünmüyordu; kullanıcı
@@ -201,12 +208,15 @@ export default function AddStockScreen({ navigation, route }: any) {
       <TouchableOpacity style={styles.submit} onPress={handleSubmit} disabled={isSubmitting}>
         <Text style={styles.submitText}>Kaydet</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: spacing(2) },
+  container: { flex: 1, backgroundColor: colors.background },
+  // Masaüstü tarayıcıda form 2000 px'e yayılmasın diye ortalanmış sütun
+  // (diğer ekranlarla aynı kural); alttaki pay klavye kapanınca boşluk bırakır.
+  content: { ...contentColumn, padding: spacing(2), paddingBottom: spacing(6) },
   label: { color: colors.textMuted, fontSize: 13, marginBottom: spacing(1), marginTop: spacing(1.5) },
   input: {
     backgroundColor: colors.surface,
@@ -229,7 +239,7 @@ const styles = StyleSheet.create({
   },
   selectedProductText: { color: colors.text, fontWeight: "600", flex: 1 },
   changeText: { color: colors.primary, fontSize: 12 },
-  productList: { maxHeight: 200 },
+  productList: { marginTop: spacing(0.5) },
   searchHint: { color: colors.textMuted, fontSize: 12, marginTop: spacing(0.5), lineHeight: 17 },
   searchError: { color: colors.danger, fontSize: 12, marginTop: spacing(0.5) },
   productOption: {

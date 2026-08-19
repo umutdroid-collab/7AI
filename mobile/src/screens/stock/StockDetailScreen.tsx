@@ -4,6 +4,7 @@ import Alert from "../../utils/alert";
 import { useFocusEffect } from "@react-navigation/native";
 import { deleteStockItem, fetchStock, fetchStockHistory, markStockItemUsed } from "../../api/services";
 import { StockItem, StockMovement } from "../../types";
+import { contentColumn } from "../../components/ui";
 import { colors, spacing } from "../../theme";
 import { apiErrorMessage } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
@@ -100,7 +101,7 @@ export default function StockDetailScreen({ route, navigation }: any) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing(2) }}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{item.product.name}</Text>
       <View style={styles.infoBox}>
         <InfoRow label="Ref numarası" value={item.product.reference_no} />
@@ -169,6 +170,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  content: { ...contentColumn, padding: spacing(2) },
   title: { color: colors.text, fontSize: 20, fontWeight: "700", marginBottom: spacing(2) },
   infoBox: {
     backgroundColor: colors.surface,

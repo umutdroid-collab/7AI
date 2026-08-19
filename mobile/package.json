@@ -8,7 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:web": "expo export -p web --output-dir dist && node scripts/postexport-web.js"
+    "build:web": "node scripts/build-web.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

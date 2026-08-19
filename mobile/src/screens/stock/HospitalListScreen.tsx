@@ -4,6 +4,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import Alert from "../../utils/alert";
 import { deleteHospital, fetchHospitals } from "../../api/services";
 import { Hospital } from "../../types";
+import { contentColumn } from "../../components/ui";
 import { colors, spacing } from "../../theme";
 import Icon from "../../components/Icon";
 import { apiErrorMessage } from "../../api/client";
@@ -63,7 +64,7 @@ export default function HospitalListScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ padding: spacing(2) }}>
+      <ScrollView contentContainerStyle={styles.content}>
         <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate("AddHospital")}>
           <Text style={styles.addButtonText}>+ Yeni Hastane</Text>
         </TouchableOpacity>
@@ -110,6 +111,7 @@ export default function HospitalListScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  content: { ...contentColumn, padding: spacing(2) },
   addButton: {
     backgroundColor: colors.primary,
     borderRadius: 10,

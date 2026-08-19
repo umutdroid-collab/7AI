@@ -272,6 +272,14 @@ Yerelde doğrularken `rm -rf dist .expo node_modules/.cache` ile derleyin ve
 gerçekten görün. Cloudflare Pages her seferinde temiz klondan derlediği için
 orada bu sorun yok.
 
+**Profil ekranındaki sürüm satırı bir teşhis aracı.** `scripts/build-web.js`
+derleme anında commit hash'ini `EXPO_PUBLIC_BUILD_COMMIT` ile bundle'a gömüyor
+(Cloudflare'de `CF_PAGES_COMMIT_SHA`, yerelde `git rev-parse`). Sebep: "değişiklik
+yayında mı yoksa tarayıcı eski sürümü mü sunuyor" sorusu üç kez uzun uzun
+araştırıldı — iOS'ta ana ekrana eklenmiş PWA, uygulama **tamamen kapatılana
+kadar** sayfayı yeniden yüklemiyor, sayfa yenilemek yetmiyor. Profil ekranının
+altındaki hash bu ayrımı tek bakışa indiriyor.
+
 **Yönlendirme ve başlıklar `netlify.toml`'da değil, derleme çıktısında.**
 `postexport-web.js` her derlemede `dist/_redirects` (SPA catch-all) ve
 `dist/_headers` (içerik özetli dosyalara uzun önbellek, `index.html`'e

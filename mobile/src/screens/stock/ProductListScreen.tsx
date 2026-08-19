@@ -4,6 +4,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import Alert from "../../utils/alert";
 import { bulkDeleteProducts, fetchProducts } from "../../api/services";
 import { Product } from "../../types";
+import { contentColumn } from "../../components/ui";
 import { colors, spacing } from "../../theme";
 import { apiErrorMessage } from "../../api/client";
 import ErrorRetry from "../../components/ErrorRetry";
@@ -93,7 +94,7 @@ export default function ProductListScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ padding: spacing(2) }}>
+      <ScrollView contentContainerStyle={styles.content}>
         <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate("AddProduct")}>
           <Text style={styles.addButtonText}>+ Yeni Ürün</Text>
         </TouchableOpacity>
@@ -155,6 +156,7 @@ export default function ProductListScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  content: { ...contentColumn, padding: spacing(2) },
   addButton: {
     backgroundColor: colors.primary,
     borderRadius: 10,

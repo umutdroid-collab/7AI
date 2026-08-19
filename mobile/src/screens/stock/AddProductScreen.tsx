@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOp
 import Alert from "../../utils/alert";
 import { createProduct, updateProduct } from "../../api/services";
 import { apiErrorMessage } from "../../api/client";
+import { contentColumn } from "../../components/ui";
 import { colors, spacing } from "../../theme";
 import { Product } from "../../types";
 
@@ -62,7 +63,7 @@ export default function AddProductScreen({ navigation, route }: any) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: spacing(2) }}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.label}>Ürün adı</Text>
       <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor={colors.textMuted} />
 
@@ -112,6 +113,7 @@ export default function AddProductScreen({ navigation, route }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  content: { ...contentColumn, padding: spacing(2) },
   label: { color: colors.textMuted, fontSize: 13, marginBottom: spacing(1), marginTop: spacing(1.5) },
   input: {
     backgroundColor: colors.surface,

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import Alert from "../../utils/alert";
 import { fetchHospitals, transferStockItem } from "../../api/services";
 import { Hospital } from "../../types";
+import { contentColumn } from "../../components/ui";
 import { colors, spacing } from "../../theme";
 import { apiErrorMessage } from "../../api/client";
 import HospitalPickerModal from "../../components/HospitalPickerModal";
@@ -55,7 +56,13 @@ export default function TransferStockScreen({ route, navigation }: any) {
       : hospitals.find((h) => h.id === destination)?.name;
 
   return (
-    <View style={styles.container}>
+    // AddStockScreen ile aynı gerekçe: düz View'da klavye açılınca formun
+    // altına ulaşılamıyor, masaüstünde de alanlar pencere boyunca yayılıyor.
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.title}>{item.product.name}</Text>
       <Text style={styles.subtitle}>
         Şu an: {item.hospital ? item.hospital.name : item.carried_by ? `${item.carried_by.full_name} (araçta)` : "Depo"} — Lot{" "}
@@ -120,12 +127,13 @@ export default function TransferStockScreen({ route, navigation }: any) {
           </Text>
         )}
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: spacing(2) },
+  container: { flex: 1, backgroundColor: colors.background },
+  content: { ...contentColumn, padding: spacing(2), paddingBottom: spacing(6) },
   title: { color: colors.text, fontSize: 18, fontWeight: "700" },
   subtitle: { color: colors.textMuted, marginTop: 4, marginBottom: spacing(2) },
   label: { color: colors.textMuted, fontSize: 13, marginBottom: spacing(1), marginTop: spacing(1) },

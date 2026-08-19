@@ -23,6 +23,7 @@ import {
 import { apiErrorMessage } from "../../api/client";
 import { User } from "../../types";
 import { colors, spacing } from "../../theme";
+import { buildLabel } from "../../utils/buildInfo";
 
 const ROLE_LABELS: Record<string, string> = { admin: "Yönetici", employee: "Çalışan" };
 
@@ -365,6 +366,10 @@ export default function ProfileScreen() {
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutButtonText}>Çıkış Yap</Text>
       </TouchableOpacity>
+
+      {/* Hangi sürümün çalıştığı: "değişiklik yayında mı yoksa tarayıcı eski
+          sürümü mü sunuyor" ayrımı bunsuz her seferinde uzun sürüyordu. */}
+      <Text style={styles.buildInfo}>{buildLabel()}</Text>
     </ScrollView>
   );
 }
@@ -472,4 +477,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing(4),
   },
   logoutButtonText: { color: colors.danger, fontWeight: "700" },
+  buildInfo: {
+    color: colors.textDim,
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: spacing(2),
+    marginBottom: spacing(3),
+  },
 });

@@ -164,15 +164,46 @@ def compress_existing_invoice_pdfs(_: User = Depends(require_admin)):
     }
 
 
+# Ödeme durumuyla ilgili olabilecek alanlar. Tek tek bakmak yerine hepsini
+# birden döndürüyoruz: "ödedim ama görünmüyor" denilen bir faturada EvoBulut'un
+# hangi alanı ne yazdığını görmeden tahmin yürütmek anlamsız.
+PAYMENT_FIELDS = ("G.a_tutar", "Kalan", "Kapatilan", "G.a_mn_kapat", "Dovizli_kalan_tutar")
+
+
 @router.get("/evobulut-diagnostics")
-def evobulut_diagnostics(_: User = Depends(require_admin)):
-    """EvoBulut bağlantısını test eder: giriş yapıp birkaç satış faturası
-    çekmeyi dener, gerçek hatayı (varsa) döner."""
-    from app.services.evobulut import EvoBulutError, fetch_sales_invoices
+def evobulut_diagnostics(fatura_no: str | None = None, _: User = Depends(require_admin)):
+    """EvoBulut bağlantısını sınar ve ödeme tespitinin ne gördüğünü döner.
+
+    `fatura_no` verilirse tüm sayfalarda o fatura aranır ve ham kaydı olduğu
+    gibi döndürülür - "bu faturayı ödedim ama ödenmemiş görünüyor" denildiğinde
+    EvoBulut'un o fatura için ne bildirdiğini görmenin tek yolu.
+    """
+    from app.services.evobulut import EvoBulutError, fetch_all_sales_invoices, fetch_sales_invoices
 
     from app.services.evobulut_sync import _parse_float
 
     try:
+        if fatura_no:
+            wanted = fatura_no.strip().lower()
+            match = next(
+                (
+                    i for i in fetch_all_sales_invoices()
+                    if (i.get("G.a_sbelge_seri_no") or "").strip().lower() == wanted
+                ),
+                None,
+            )
+            if match is None:
+                return {"ok": False, "message": f"'{fatura_no}' EvoBulut'ta bulunamadı"}
+            amount = _parse_float(match.get("G.a_tutar"))
+            kalan = _parse_float(match.get("Kalan"))
+            return {
+                "ok": True,
+                "fatura_no": fatura_no,
+                "odeme_alanlari": {k: match.get(k) for k in PAYMENT_FIELDS},
+                "odendi_sayilir": bool(amount and amount > 0 and kalan == 0),
+                "ham_kayit": match,
+            }
+
         items = fetch_sales_invoices()
         # Ödeme tespitinin neden tutmadığını görmek için: ham "Kalan" değeri,
         # bizim onu nasıl okuduğumuz ve verdiğimiz karar yan yana. Biçim

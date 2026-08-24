@@ -94,9 +94,50 @@ def _download_pdf(evobulut_id: str, dest_folder: str) -> tuple[str, str] | None:
         return None
 
 
+def _refresh_existing(invoice: Invoice, item: dict, amount: float | None) -> bool:
+    """EvoBulut'ta sonradan değişen alanları mevcut faturaya işler.
+
+    Bu olmadan senkronizasyon yalnızca YENİ fatura oluşturuyordu ve fatura bir
+    kez aktarıldıktan sonra bir daha güncellenmiyordu. Sonucu: EvoBulut'ta
+    tahsil edilen bir fatura uygulamada sonsuza kadar "ödenmemiş" görünüyordu
+    ve vade uyarıları da gönderilmeye devam ediyordu (canlıda bildirildi).
+
+    Ödeme durumunda kural tek yönlü: EvoBulut bir faturayı **ödendi yapabilir,
+    ödenmemiş yapamaz**. Çünkü kullanıcı parayı aldığında uygulamadan elle
+    "ödendi" işaretleyebiliyor; EvoBulut'a işlenmesi gün alabilir ve saatlik
+    senkronizasyon bu işareti geri alsaydı yönetici aynı faturayı tekrar tekrar
+    işaretlemek zorunda kalırdı.
+
+    Diğer alanlar yalnızca BOŞSA doldurulur - elle yapılmış düzeltmelerin
+    üzerine yazmamak için. Fatura numarası özellikle önemli: e-fatura
+    gönderilene kadar EvoBulut "GÖNDERİLMEDİ" döndüğü için ilk aktarımda boş
+    kalıyor, numara sonradan geliyor.
+    """
+    changed = False
+
+    kalan = _parse_float(item.get("Kalan"))
+    if amount and amount > 0 and kalan == 0 and invoice.status != InvoiceStatus.PAID:
+        invoice.status = InvoiceStatus.PAID
+        changed = True
+
+    for field, value in (
+        ("invoice_number", _invoice_number(item)),
+        ("invoice_date", _parse_date(item.get("G.a_tarih"))),
+        ("due_date", _parse_date(item.get("G.a_vtarih"))),
+        ("amount", amount),
+        ("counterparty", _counterparty(item)),
+    ):
+        if value is not None and getattr(invoice, field) is None:
+            setattr(invoice, field, value)
+            changed = True
+
+    return changed
+
+
 def sync_invoices_from_evobulut() -> dict:
     db = SessionLocal()
     created = 0
+    updated = 0
     skipped = 0
     errors: list[str] = []
     try:
@@ -110,12 +151,16 @@ def sync_invoices_from_evobulut() -> dict:
             if not evobulut_id:
                 continue
 
+            amount = _parse_float(item.get("G.a_tutar"))
+
             exists = db.query(Invoice).filter(Invoice.evobulut_id == evobulut_id).first()
             if exists:
-                skipped += 1
+                if _refresh_existing(exists, item, amount):
+                    updated += 1
+                else:
+                    skipped += 1
                 continue
 
-            amount = _parse_float(item.get("G.a_tutar"))
             # invoice_folder'ın kökü yerine bir alt klasöre kaydediyoruz - kök,
             # elle bırakılan PDF'ler için watchdog tarafından izleniyor
             # (recursive=False), bir alt klasör ona görünmez olur. Aksi halde
@@ -154,8 +199,10 @@ def sync_invoices_from_evobulut() -> dict:
     finally:
         db.close()
 
-    logger.info("EvoBulut senkronizasyonu: %d yeni fatura, %d zaten vardı", created, skipped)
-    return {"ok": True, "created": created, "skipped": skipped, "errors": errors}
+    logger.info(
+        "EvoBulut senkronizasyonu: %d yeni, %d güncellendi, %d değişmedi", created, updated, skipped
+    )
+    return {"ok": True, "created": created, "updated": updated, "skipped": skipped, "errors": errors}
 
 
 def start_evobulut_sync_scheduler() -> BackgroundScheduler | None:

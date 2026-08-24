@@ -366,6 +366,29 @@ silinince susar). Vade/SKT uyarıları bu yüzden push değil, her sabah
 `DIGEST_HOUR`'da gönderilen tek bir **e-posta özeti** (`daily_digest.py`).
 Bildirilecek bir şey yoksa e-posta gönderilmez.
 
+**EvoBulut senkronizasyonu mevcut faturaları da günceller.** Eskiden
+yalnızca YENİ fatura oluşturuyordu (`if exists: continue`); bir fatura bir kez
+aktarıldıktan sonra bir daha dokunulmuyordu. Sonucu: EvoBulut'ta tahsil edilen
+fatura uygulamada sonsuza kadar "ödenmemiş" görünüyor ve vade uyarıları
+gitmeye devam ediyordu (canlıda bildirildi). Ödeme durumunda kural **tek
+yönlü**: EvoBulut bir faturayı ödendi *yapabilir*, ödenmemiş *yapamaz* —
+kullanıcı parayı aldığında uygulamadan elle işaretleyebiliyor, EvoBulut'a
+işlenmesi gün alabiliyor ve saatlik senkronizasyon bu işareti geri alsaydı
+aynı fatura tekrar tekrar işaretlenmek zorunda kalırdı. Diğer alanlar yalnızca
+**boşsa** doldurulur (elle düzeltmelerin üzerine yazmamak için); fatura
+numarası özellikle önemli, e-fatura gönderilene kadar EvoBulut "GÖNDERİLMEDİ"
+döndürdüğü için ilk aktarımda boş kalıyor.
+
+**Alt sekme çubuğunun yüksekliği verilmez.** `tabBarStyle.height` bir sayıysa
+React Navigation onu TOPLAM yükseklik sayıp iç yerleşimi ona göre kuruyor
+(`BottomTabBar.js`: `customHeight` varsa güvenli alan payı atlanıyor). Sabit
+değerle iki kez yanıldık: önce 64px alt çentiğin altında kaldı, sonra
+64+inset verince çubuk uzadı ama ikon+etikete ayrılan iç alan dar kalıp
+yazılar ortadan kesildi. Kütüphane kendi hesabını yapıyor; güvenli alanı
+`viewport-fit=cover` sayesinde doğru okuyor. Etikete ayrıca `lineHeight`
+verilmeli — yazı kutusu tam font boyu kadar olunca "ş", "p", "g" gibi alt
+uzantılar kırpılıyor.
+
 **EvoBulut PDF'leri `invoice_folder/evobulut/` altına iner.** Kök klasör,
 elle bırakılan PDF'ler için watchdog tarafından (recursive=False) izleniyor;
 köke inseydi aynı PDF bir de OCR ile, daha düşük güvenle işlenip API'den

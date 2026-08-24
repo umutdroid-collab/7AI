@@ -3,7 +3,6 @@ import { ActivityIndicator, View } from "react-native";
 import { NavigationContainer, DarkTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
 import { colors, typography } from "../theme";
 import HeaderProfileButton from "../components/HeaderProfileButton";
@@ -156,29 +155,27 @@ const TABS: { name: string; label: string; icon: IconName; component: React.Comp
 ];
 
 function MainTabs() {
-  // Güvenli alan payını KENDİMİZ eklemek zorundayız. React Navigation'da
-  // tabBarStyle.height bir sayıysa o değer TOPLAM yükseklik sayılır ve alt
-  // çentik payı üstüne EKLENMEZ (BottomTabBar.js: customHeight varsa inset
-  // atlanıyor), ama çubuk yine içeriden insets.bottom kadar padding uygular.
-  // iPhone'da 34px'lik ana ekran çubuğu 64px'in içinden yiyordu ve sekme
-  // etiketleri alttan kesiliyordu - canlıda görüldü.
-  const insets = useSafeAreaInsets();
-
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
+        // Yükseklik BİLEREK verilmiyor. tabBarStyle.height bir sayıysa
+        // React Navigation onu TOPLAM yükseklik sayıp iç yerleşimi ona göre
+        // kuruyor (BottomTabBar.js: customHeight varsa güvenli alan payı
+        // atlanıyor). Sabit değerle iki kez yanıldık: önce 64px alt çentiğin
+        // altında kaldı, sonra 64+inset verince çubuk uzadı ama ikon+etiket
+        // için ayrılan iç alan dar kaldı ve yazılar ortadan kesildi. Kütüphane
+        // kendi hesabını yapsın; güvenli alanı zaten `viewport-fit=cover`
+        // sayesinde doğru okuyor (bkz. scripts/postexport-web.js).
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          // Tasarımdaki 64px sekme sırası + cihazın alt güvenli alanı.
-          height: 64 + insets.bottom,
-          paddingTop: 8,
-          paddingBottom: 8 + insets.bottom,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textDim,
-        tabBarLabelStyle: { ...typography.tabLabel, marginTop: 2 },
+        // lineHeight şart: yazı kutusu tam font boyu kadar olunca alt uzantılar
+        // ("ş", "p", "g") kırpılıyor.
+        tabBarLabelStyle: { ...typography.tabLabel, lineHeight: 14, marginTop: 2 },
       }}
     >
       {TABS.map((tab) => (

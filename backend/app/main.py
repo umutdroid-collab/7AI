@@ -106,4 +106,14 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "healthy"}
+    """Sağlık kontrolü + çalışan sürüm.
+
+    Sürüm bilgisi teşhis için: mobil tarafta Profil ekranındaki hash aynı işi
+    görüyor ama backend'in hangi commit'te olduğunu görmenin bir yolu yoktu ve
+    "düzeltme deploy oldu mu yoksa hata mı devam ediyor" sorusu bu yüzden
+    cevapsız kalıyordu. Railway commit'i ortam değişkeninde veriyor.
+    """
+    import os
+
+    commit = os.getenv("RAILWAY_GIT_COMMIT_SHA") or os.getenv("GIT_COMMIT") or ""
+    return {"status": "healthy", "commit": commit[:7] or "bilinmiyor"}

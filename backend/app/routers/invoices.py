@@ -170,11 +170,33 @@ def evobulut_diagnostics(_: User = Depends(require_admin)):
     çekmeyi dener, gerçek hatayı (varsa) döner."""
     from app.services.evobulut import EvoBulutError, fetch_sales_invoices
 
+    from app.services.evobulut_sync import _parse_float
+
     try:
         items = fetch_sales_invoices()
+        # Ödeme tespitinin neden tutmadığını görmek için: ham "Kalan" değeri,
+        # bizim onu nasıl okuduğumuz ve verdiğimiz karar yan yana. Biçim
+        # beklediğimizden farklıysa (ör. birim içeren "0,00 TL") burada
+        # `kalan_okunan: null` olarak görünür.
+        payment_rows = []
+        for item in items[:10]:
+            amount = _parse_float(item.get("G.a_tutar"))
+            kalan = _parse_float(item.get("Kalan"))
+            payment_rows.append(
+                {
+                    "fatura_no": item.get("G.a_sbelge_seri_no"),
+                    "tutar_ham": item.get("G.a_tutar"),
+                    "tutar_okunan": amount,
+                    "kalan_ham": item.get("Kalan"),
+                    "kalan_okunan": kalan,
+                    "odendi_sayilir": bool(amount and amount > 0 and kalan == 0),
+                }
+            )
+
         return {
             "ok": True,
             "message": f"EvoBulut'a başarıyla bağlanıldı, {len(items)} satış faturası bulundu.",
+            "odeme_tespiti": payment_rows,
             "sample": items[0] if items else None,
         }
     except EvoBulutError as e:

@@ -173,9 +173,20 @@ function MainTabs() {
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textDim,
-        // lineHeight şart: yazı kutusu tam font boyu kadar olunca alt uzantılar
-        // ("ş", "p", "g") kırpılıyor.
-        tabBarLabelStyle: { ...typography.tabLabel, lineHeight: 14, marginTop: 2 },
+        // Dikey bütçe dar ve hesap tutmak zorunda: kütüphane çubuğu
+        // 49px + güvenli alan yapıyor ve 15px iç boşluk uyguluyor
+        // (BottomTabBar.js: TABBAR_HEIGHT_UIKIT / SPACING_UIKIT), yani
+        // ikon + etikete 34px kalıyor. Öğenin `overflow` değeri "visible"
+        // olduğu için taşan yazı kırpılmaz, çubuğun ALTINA taşar ve ekran
+        // kenarında kesilir - etiketlerin yarım görünmesinin sebebi buydu.
+        // 18 + 12 = 30px, 34'ün altında pay bırakıyor.
+        tabBarIconStyle: { height: 18 },
+        // lineHeight açıkça verilmeli: yazı kutusu tam font boyu kadar olunca
+        // "ş", "p", "g" gibi alt uzantılar kırpılıyor.
+        tabBarLabelStyle: { ...typography.tabLabel, lineHeight: 12, marginTop: 0 },
+        // Sistem yazı boyutu büyükse etiket 34px'lik bütçeyi tek başına
+        // aşabiliyor; çubuk yüksekliği ölçekle birlikte büyümüyor.
+        tabBarAllowFontScaling: false,
       }}
     >
       {TABS.map((tab) => (
@@ -185,7 +196,7 @@ function MainTabs() {
           component={tab.component}
           options={{
             tabBarLabel: tab.label,
-            tabBarIcon: ({ color }) => <Icon name={tab.icon} size={20} color={color} />,
+            tabBarIcon: ({ color }) => <Icon name={tab.icon} size={18} color={color} />,
           }}
         />
       ))}

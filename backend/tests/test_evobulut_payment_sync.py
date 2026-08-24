@@ -124,3 +124,50 @@ def test_paid_invoice_leaves_the_due_filters(client, admin, db, monkeypatch):
     assert overdue == []
     everything = client.get("/invoices", headers=admin).json()
     assert [i["status"] for i in everything] == ["paid"]
+
+
+# --- Sayı biçimi ------------------------------------------------------------
+#
+# EvoBulut Türkçe biçimli sayı döndürebiliyor. `float("0,00")` hata verip None
+# döndürdüğü için `Kalan` bu biçimde geldiğinde fatura HİÇBİR ZAMAN ödendi
+# sayılmıyordu.
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("0", 0.0),
+        ("0.00", 0.0),
+        ("0,00", 0.0),          # Türkçe ondalık - eskiden None dönüyordu
+        ("1.234,56", 1234.56),  # Türkçe binlik + ondalık
+        ("1234.56", 1234.56),   # İngilizce biçim bozulmamalı
+        ("", None),
+        (None, None),
+        ("abc", None),
+    ],
+)
+def test_amounts_parse_in_both_number_formats(raw, expected):
+    assert evobulut_sync._parse_float(raw) == expected
+
+
+def test_turkish_formatted_zero_marks_the_invoice_paid(client, admin, db, monkeypatch):
+    """Asıl hata: Kalan '0,00' gelince ödeme hiç algılanmıyordu."""
+    _sync(monkeypatch, [_item(kalan="1.000,00", tutar="1.000,00")])
+    invoice = db.query(Invoice).filter(Invoice.evobulut_id == "1001").first()
+    assert invoice.amount == 1000.0
+    assert invoice.status != InvoiceStatus.PAID
+
+    _sync(monkeypatch, [_item(kalan="0,00", tutar="1.000,00")])
+
+    db.expire_all()
+    invoice = db.query(Invoice).filter(Invoice.evobulut_id == "1001").first()
+    assert invoice.status == InvoiceStatus.PAID
+
+
+def test_a_turkish_formatted_invoice_imports_with_its_amount(client, admin, db, monkeypatch):
+    """Tutar okunamazsa hem rakam kaybolur hem ödeme tespiti çalışmaz."""
+    _sync(monkeypatch, [_item(kalan="0,00", tutar="12.345,67")])
+
+    invoice = db.query(Invoice).filter(Invoice.evobulut_id == "1001").first()
+    assert invoice.amount == 12345.67
+    assert invoice.status == InvoiceStatus.PAID

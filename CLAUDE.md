@@ -394,6 +394,15 @@ elle bırakılan PDF'ler için watchdog tarafından (recursive=False) izleniyor;
 köke inseydi aynı PDF bir de OCR ile, daha düşük güvenle işlenip API'den
 gelen doğru verinin üzerine yazardı.
 
+**EvoBulut sayıları Türkçe biçimde gelebiliyor.** `float("0,00")` hata
+verip `None` döndürüyordu; `Kalan` alanı bu biçimde geldiğinde ödeme tespiti
+(`kalan == 0`) hiç tutmuyor ve tahsil edilmiş faturalar sonsuza kadar
+"ödenmemiş" görünüyordu. `_parse_float` artık virgül varsa onu ondalık ayracı,
+noktaları binlik ayracı sayıyor ("1.234,56" → 1234.56); virgül yoksa değer
+olduğu gibi okunuyor, yani "1234.56" bozulmuyor. Aynı tuzak tutar alanında da
+vardı — tutar okunamayınca `amount` boş kalıyor ve ödeme tespiti zaten
+çalışmıyor.
+
 **EvoBulut API biçimi** (`services/evobulut.py`): tek uç, `cmd` ile
 yönlendirme; login `cmd:euas` → `veri.Ana[0].UID`; token hem body'de `UID`
 hem `X-ClientId` header'ında. Satış faturaları `cmd:jq_list, tur:31`,

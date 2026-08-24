@@ -35,10 +35,23 @@ def _parse_date(value: str | None) -> date | None:
 
 
 def _parse_float(value: str | None) -> float | None:
+    """EvoBulut sayılarını okur; Türkçe biçim de gelebiliyor.
+
+    `float("0,00")` hata verip None döndürüyordu ve `Kalan` alanı bu biçimde
+    geldiğinde fatura HİÇBİR ZAMAN ödendi sayılmıyordu - tahsil edilmiş
+    faturaların uygulamada ödenmemiş görünmesinin sebebi buydu.
+
+    Ayrım virgüle bakılarak yapılıyor: virgül varsa ondalık ayracı odur ve
+    noktalar binlik ayracıdır ("1.234,56" → 1234.56). Virgül yoksa değer
+    olduğu gibi okunur, yani "1234.56" bozulmaz.
+    """
     if value in (None, ""):
         return None
+    text = str(value).strip()
+    if "," in text:
+        text = text.replace(".", "").replace(",", ".")
     try:
-        return float(value)
+        return float(text)
     except ValueError:
         return None
 
